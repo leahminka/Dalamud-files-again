@@ -81,9 +81,14 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         var category = uiCategory.Trim();
         var lower = name.ToLowerInvariant();
 
-        // Exact category matching prevents "Fishing Tackle" from being treated as "Fish".
-        if (category.Equals("Fish", StringComparison.OrdinalIgnoreCase))
+        // Fish must be the exact UI category; fishing tackle, lures, and bait are never fish.
+        if (category.Equals("Fish", StringComparison.OrdinalIgnoreCase) &&
+            !lower.Contains("lure", StringComparison.Ordinal) &&
+            !lower.Contains("bait", StringComparison.Ordinal))
             return "Fish";
+
+        if (category.Equals("Fishing Tackle", StringComparison.OrdinalIgnoreCase))
+            return "Miscellaneous";
 
         if (category.Equals("Dye", StringComparison.OrdinalIgnoreCase) ||
             category.Equals("Dyes", StringComparison.OrdinalIgnoreCase))

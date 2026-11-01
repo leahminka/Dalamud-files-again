@@ -14,12 +14,9 @@ public sealed class MainWindow : Window, IDisposable
     private readonly InventoryScanner scanner;
     private readonly IPluginLog log;
     private readonly ITextureProvider textures;
-    private List<CatalogItem> catalog = [];
     private List<InventoryCandidate> scannedItems = [];
-    private List<InventoryCandidate> preview = [];
-    private readonly HashSet<(GameInventoryType Container, uint Slot)> selectedStacks = [];
+    private readonly HashSet<(GameInventoryType Container, uint Slot)> excludedStacks = [];
     private string status = "Press Scan Personal Inventory to load the items in your inventory.";
-    private bool previewOpen;
     private bool awaitingNativeConfirmation;
     private List<InventoryCandidate> executionQueue = [];
     private int executionIndex;
@@ -117,8 +114,6 @@ public sealed class MainWindow : Window, IDisposable
         DrawSelectionPanel();
         ImGui.EndChild();
 
-        DrawExecutionStatus();
-        if (previewOpen) DrawPreview();
     }
 
     private void DrawScanOptions()
@@ -160,9 +155,7 @@ public sealed class MainWindow : Window, IDisposable
             status = scannedItems.Count == 0
                 ? "Scan complete: no items were found in the selected inventory locations."
                 : $"Scan complete: found {scannedItems.Count} item stacks. Toggle items below to select them.";
-            preview.Clear();
-            selectedStacks.Clear();
-            previewOpen = false;
+            excludedStacks.Clear();
         }
         catch (Exception ex)
         {
@@ -250,8 +243,8 @@ public sealed class MainWindow : Window, IDisposable
 
     private void DrawSelectionPanel()
     {
-        var selected = GetVisibleSelectedItems();
-        ImGui.Text($"Selected to discard ({selected.Count})");
+        var selected = GetSelectedCandidates();
+        ImGui.Text($"Selected to discard ({selected.Count} stacks)");
         DrawCategorySelector();
         ImGui.Separator();
 
@@ -266,43 +259,71 @@ public sealed class MainWindow : Window, IDisposable
         if (ImGui.Button("Deselect All"))
         {
             config.SelectedItemIds.Clear();
+            excludedStacks.Clear();
             config.Save();
         }
 
-        if (ImGui.BeginChild("selected-items-list", new Vector2(0, Math.Max(100, ImGui.GetContentRegionAvail().Y - 80)), false))
+        var listHeight = Math.Max(100, ImGui.GetContentRegionAvail().Y - 120);
+        if (ImGui.BeginChild("selected-items-list", new Vector2(0, listHeight), false))
         {
             foreach (var item in selected)
             {
-                ImGui.PushID((int)item.ItemId);
-                ImGui.Text(item.Name);
-                ImGui.TextDisabled($"{item.Quantity:N0} total across {item.StackCount} stack(s)");
-                ImGui.SameLine();
-                if (ImGui.SmallButton("Remove"))
+                ImGui.PushID($"{(uint)item.Container}:{item.Slot}");
+                var includeStack = !excludedStacks.Contains((item.Container, item.Slot));
+                if (ImGui.Checkbox("##discard-stack", ref includeStack))
                 {
-                    config.SelectedItemIds.Remove(item.ItemId);
-                    config.Save();
+                    if (includeStack) excludedStacks.Remove((item.Container, item.Slot));
+                    else excludedStacks.Add((item.Container, item.Slot));
                 }
+                ImGui.SameLine();
+                var icon = textures.GetFromGameIcon(new GameIconLookup(item.IconId)).GetWrapOrDefault();
+                if (icon != null)
+                {
+                    ImGui.Image(icon.Handle, new Vector2(22, 22));
+                    ImGui.SameLine();
+                }
+                ImGui.BeginGroup();
+                ImGui.Text($"{item.Name} × {item.Quantity:N0} {(item.IsHq ? "(HQ)" : "")}");
+                ImGui.TextDisabled($"{item.Container}, slot {item.Slot}");
+                ImGui.EndGroup();
                 ImGui.Separator();
                 ImGui.PopID();
             }
         }
         ImGui.EndChild();
 
-        if (selected.Count > 0 && ImGui.Button("Confirm Discard", new Vector2(-1, 0)))
-            BuildPreview();
+        var includedCount = selected.Count(x => !excludedStacks.Contains((x.Container, x.Slot)));
+        ImGui.TextDisabled($"Stacks selected: {includedCount} / {selected.Count}");
+        var requiresCtrl = !config.DisableHoldCtrlToDiscard;
+        var buttonLabel = requiresCtrl ? "Hold Ctrl + Click to Confirm Discard" : "Confirm Discard";
+        ImGui.BeginDisabled(includedCount == 0 || awaitingNativeConfirmation || executionQueue.Count > 0);
+        if (ImGui.Button(buttonLabel, new Vector2(-1, 0)))
+        {
+            if (requiresCtrl && !ImGui.GetIO().KeyCtrl)
+                status = "Confirmation not started. Hold Ctrl while clicking Confirm Discard.";
+            else
+                BeginExecution(selected.Where(x => !excludedStacks.Contains((x.Container, x.Slot))));
+        }
+        ImGui.EndDisabled();
+        if (requiresCtrl)
+            ImGui.TextDisabled("Hold Ctrl while clicking to start the discard batch.");
 
         ImGui.TextDisabled($"Protected item types: {config.ExcludedItemIds.Count}");
+        DrawExecutionStatus();
     }
-
     private void DrawCategorySelector()
     {
-        var categories = GetVisibleSummaries().Select(x => x.Category).Distinct().OrderBy(x => x).ToArray();
-        if (categories.Length == 0) return;
+        // Keep every supported category available even if the current scan has no matches.
+        var categories = new[]
+        {
+            "Fish", "Monster Materials", "Crafting Materials", "Dyes", "Miscellaneous"
+        }.Concat(GetVisibleSummaries().Select(x => x.Category))
+         .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
 
         ImGui.TextDisabled("Bulk select by category");
         ImGui.SetNextItemWidth(220);
-        var preview = string.IsNullOrEmpty(selectedCategory) ? "Choose a category..." : selectedCategory;
-        if (ImGui.BeginCombo("##bulk-category", preview))
+        var comboLabel = string.IsNullOrEmpty(selectedCategory) ? "Choose a category..." : selectedCategory;
+        if (ImGui.BeginCombo("##bulk-category", comboLabel))
         {
             foreach (var category in categories)
             {
@@ -315,7 +336,7 @@ public sealed class MainWindow : Window, IDisposable
         }
 
         ImGui.SameLine();
-        ImGui.BeginDisabled(string.IsNullOrEmpty(selectedCategory) || !categories.Contains(selectedCategory));
+        ImGui.BeginDisabled(string.IsNullOrEmpty(selectedCategory));
         if (ImGui.Button("Select All in Category"))
         {
             foreach (var item in GetVisibleSummaries().Where(x => x.Category == selectedCategory))
@@ -325,26 +346,10 @@ public sealed class MainWindow : Window, IDisposable
         }
         ImGui.EndDisabled();
     }
-
-    private List<ItemSummary> GetVisibleSelectedItems() =>
-        GetVisibleSummaries().Where(x => config.SelectedItemIds.Contains(x.ItemId) &&
-            !config.ExcludedItemIds.Contains(x.ItemId)).ToList();
-
     private List<InventoryCandidate> GetSelectedCandidates() =>
         scannedItems.Where(x => config.SelectedItemIds.Contains(x.BaseItemId) &&
             !config.ExcludedItemIds.Contains(x.BaseItemId) &&
             !config.ExcludedItemIds.Contains(x.ItemId)).ToList();
-
-    private void BuildPreview()
-    {
-        var gearsetIds = GetGearsetItemIds();
-        preview = GetSelectedCandidates().Where(x => !gearsetIds.Contains(x.BaseItemId) &&
-            !gearsetIds.Contains(x.ItemId)).ToList();
-        selectedStacks.Clear();
-        foreach (var item in preview) selectedStacks.Add((item.Container, item.Slot));
-        previewOpen = true;
-        status = $"Preview ready: {preview.Count} stacks selected. Review each stack before proceeding.";
-    }
 
     private unsafe HashSet<uint> GetGearsetItemIds()
     {
@@ -374,50 +379,6 @@ public sealed class MainWindow : Window, IDisposable
         return result;
     }
 
-    private void DrawPreview()
-    {
-        ImGui.Separator();
-        ImGui.Text("Discard preview — uncheck any stack you want to keep.");
-        if (ImGui.BeginChild("preview-items", new Vector2(0, 180), true))
-        {
-            foreach (var item in preview)
-            {
-                ImGui.PushID($"{(uint)item.Container}:{item.Slot}");
-                var selected = selectedStacks.Contains((item.Container, item.Slot));
-                if (ImGui.Checkbox("Discard", ref selected))
-                {
-                    if (selected) selectedStacks.Add((item.Container, item.Slot));
-                    else selectedStacks.Remove((item.Container, item.Slot));
-                }
-                var icon = textures.GetFromGameIcon(new GameIconLookup(item.IconId)).GetWrapOrDefault();
-                if (icon != null)
-                {
-                    ImGui.SameLine();
-                    ImGui.Image(icon.Handle, new Vector2(22, 22));
-                }
-                ImGui.SameLine();
-                ImGui.Text($"{item.Name} × {item.Quantity} {(item.IsHq ? "(HQ)" : "")} — {item.Container}, slot {item.Slot}");
-                ImGui.PopID();
-            }
-        }
-        ImGui.EndChild();
-
-        ImGui.Text($"Selected stacks: {selectedStacks.Count}");
-        var requiresCtrl = !config.DisableHoldCtrlToDiscard;
-        var buttonLabel = requiresCtrl ? "Hold Ctrl + Click to Confirm & Start" : "Confirm & Start Discard";
-        if (ImGui.Button(buttonLabel, new Vector2(-1, 0)))
-        {
-            if (requiresCtrl && !ImGui.GetIO().KeyCtrl)
-                status = "Confirmation not started. Hold Ctrl while clicking the button to discard the selected stacks.";
-            else
-                BeginExecution(preview.Where(x => selectedStacks.Contains((x.Container, x.Slot))).ToList());
-        }
-        if (requiresCtrl)
-            ImGui.TextDisabled("Ctrl must be held at the moment you click the confirmation button.");
-        ImGui.SameLine();
-        if (ImGui.Button("Cancel Preview")) previewOpen = false;
-    }
-
     private void BeginExecution(IEnumerable<InventoryCandidate> items)
     {
         if (awaitingNativeConfirmation || executionQueue.Count > 0)
@@ -433,7 +394,6 @@ public sealed class MainWindow : Window, IDisposable
             status = "No stacks selected for discard.";
             return;
         }
-        previewOpen = false;
         RequestNextItem();
     }
 

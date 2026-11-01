@@ -10,8 +10,8 @@ A user-controlled inventory cleanup plugin for Final Fantasy XIV / Dalamud API 1
 - The plugin window does not open automatically when the plugin is enabled.
 - Search scanned storage and select individual item types for review. A compact category dropdown provides bulk selection without widening the window.
 - Protect item types with a persistent exclusion list.
-- Review every selected stack, including its icon, name, HQ marker, quantity, container, and slot.
-- Include or exclude individual stacks in the discard preview.
+- Review every selected stack directly in the right-hand panel, including its icon, name, HQ marker, quantity, container, and slot.
+- Include or exclude individual stacks and start discarding from that same panel; there is no separate preview window.
 - Resize the inventory and selection panels by dragging the divider.
 - Optional Armoury Chest and Chocobo Saddlebag scanning (including Premium Saddlebag when available).
 - Compact category dropdown for bulk selection. Fish classification uses the exact Fish item category, excluding fishing tackle and lures.
@@ -21,7 +21,7 @@ A user-controlled inventory cleanup plugin for Final Fantasy XIV / Dalamud API 1
 
 ## Safety behavior
 
-- No background or automatic scan/discard loop exists. A user must scan, select items, review the preview, and explicitly click the final confirmation button.
+- No background or automatic scan/discard loop exists. A user must scan, select items, review the selected stacks in the right-hand panel, and explicitly click Confirm Discard.
 - Ctrl confirmation is enabled by default. If disabled, the user can click the final button normally.
 - The plugin never accepts the game's native Yes/No prompt.
 - Protected item IDs override inclusion.
@@ -47,6 +47,6 @@ GitHub Actions downloads the current API 15 staging build into the standard Dala
 
 Custom Dalamud repository feed: https://raw.githubusercontent.com/leahminka/Dalamud-files-again/main/repo.json
 
-Latest release: https://github.com/leahminka/Dalamud-files-again/releases/tag/v0.1.4
+Latest release: https://github.com/leahminka/Dalamud-files-again/releases/tag/v0.1.5
 
 To install: open /xlsettings → Experimental → Custom Plugin Repositories, paste the feed URL above, enable it, and save. Then open /xlplugins and search for Inventory Discard Assistant.
