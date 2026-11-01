@@ -24,6 +24,7 @@ public sealed class MainWindow : Window, IDisposable
     private List<InventoryCandidate> executionQueue = [];
     private int executionIndex;
     private InventoryCandidate? awaitingCandidate;
+    private string selectedCategory = string.Empty;
 
     private sealed record ItemSummary(uint ItemId, uint IconId, string Name, string Category,
         int Quantity, int StackCount);
@@ -46,6 +47,12 @@ public sealed class MainWindow : Window, IDisposable
     public override void Draw()
     {
         AdvanceExecution();
+
+        const string decorativeText = "yuff is cute";
+        var decorativeSize = ImGui.CalcTextSize(decorativeText);
+        ImGui.SetCursorPosX(Math.Max(0, (ImGui.GetWindowWidth() - decorativeSize.X) / 2f));
+        ImGui.TextColored(new Vector4(0.38f, 0.68f, 1.0f, 1.0f), decorativeText);
+
         ImGui.TextWrapped("Scan selected storage, choose items, then review every stack before discarding. Nothing runs in the background.");
         DrawScanOptions();
 
@@ -291,21 +298,32 @@ public sealed class MainWindow : Window, IDisposable
     {
         var categories = GetVisibleSummaries().Select(x => x.Category).Distinct().OrderBy(x => x).ToArray();
         if (categories.Length == 0) return;
+
         ImGui.TextDisabled("Bulk select by category");
-        foreach (var category in categories)
+        ImGui.SetNextItemWidth(220);
+        var preview = string.IsNullOrEmpty(selectedCategory) ? "Choose a category..." : selectedCategory;
+        if (ImGui.BeginCombo("##bulk-category", preview))
         {
-            ImGui.PushID(category);
-            if (ImGui.SmallButton("Select " + category))
+            foreach (var category in categories)
             {
-                foreach (var item in GetVisibleSummaries().Where(x => x.Category == category))
-                    if (!config.ExcludedItemIds.Contains(item.ItemId))
-                        config.SelectedItemIds.Add(item.ItemId);
-                config.Save();
+                var isSelected = selectedCategory == category;
+                if (ImGui.Selectable(category, isSelected))
+                    selectedCategory = category;
+                if (isSelected) ImGui.SetItemDefaultFocus();
             }
-            ImGui.SameLine();
-            ImGui.PopID();
+            ImGui.EndCombo();
         }
-        ImGui.NewLine();
+
+        ImGui.SameLine();
+        ImGui.BeginDisabled(string.IsNullOrEmpty(selectedCategory) || !categories.Contains(selectedCategory));
+        if (ImGui.Button("Select All in Category"))
+        {
+            foreach (var item in GetVisibleSummaries().Where(x => x.Category == selectedCategory))
+                if (!config.ExcludedItemIds.Contains(item.ItemId))
+                    config.SelectedItemIds.Add(item.ItemId);
+            config.Save();
+        }
+        ImGui.EndDisabled();
     }
 
     private List<ItemSummary> GetVisibleSelectedItems() =>

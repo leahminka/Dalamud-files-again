@@ -3,6 +3,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.Sheets;
+using System.Text.RegularExpressions;
 
 namespace InventoryDiscardAssistant;
 
@@ -77,28 +78,32 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
 
     private static string ClassifyItem(string name, string uiCategory)
     {
+        var category = uiCategory.Trim();
         var lower = name.ToLowerInvariant();
-        if (uiCategory.Contains("fish", StringComparison.OrdinalIgnoreCase)) return "Fish";
-        if (uiCategory.Contains("dye", StringComparison.OrdinalIgnoreCase) ||
-            lower.Contains("dye", StringComparison.Ordinal)) return "Dyes";
 
+        // Exact category matching prevents "Fishing Tackle" from being treated as "Fish".
+        if (category.Equals("Fish", StringComparison.OrdinalIgnoreCase))
+            return "Fish";
+
+        if (category.Equals("Dye", StringComparison.OrdinalIgnoreCase) ||
+            category.Equals("Dyes", StringComparison.OrdinalIgnoreCase))
+            return "Dyes";
+
+        // Whole-word matching avoids false positives from broad substrings.
         string[] monsterMaterialTerms =
         [
-            "fang", "claw", "horn", "scale", "hide", "pelt", "shell", "carapace",
-            "wing", "feather", "fur", "blood", "talon", "stinger", "tooth"
+            "fang", "claw", "horn", "hide", "pelt", "carapace", "talon", "stinger", "tooth"
         ];
-        if (monsterMaterialTerms.Any(term => lower.Contains(term, StringComparison.Ordinal)))
+        if (monsterMaterialTerms.Any(term =>
+                Regex.IsMatch(lower, $@"\\b{Regex.Escape(term)}\\b", RegexOptions.CultureInvariant)))
             return "Monster Materials";
 
-        if (uiCategory.Contains("ingredient", StringComparison.OrdinalIgnoreCase) ||
-            uiCategory.Contains("material", StringComparison.OrdinalIgnoreCase) ||
-            uiCategory.Contains("stone", StringComparison.OrdinalIgnoreCase) ||
-            uiCategory.Contains("metal", StringComparison.OrdinalIgnoreCase) ||
-            uiCategory.Contains("cloth", StringComparison.OrdinalIgnoreCase) ||
-            uiCategory.Contains("reagent", StringComparison.OrdinalIgnoreCase) ||
-            uiCategory.Contains("alchem", StringComparison.OrdinalIgnoreCase) ||
-            uiCategory.Contains("wood", StringComparison.OrdinalIgnoreCase) ||
-            uiCategory.Contains("leather", StringComparison.OrdinalIgnoreCase))
+        string[] craftingCategories =
+        [
+            "Ingredient", "Ingredients", "Material", "Materials", "Stone", "Metal",
+            "Cloth", "Reagent", "Alchemy", "Wood", "Leather"
+        ];
+        if (craftingCategories.Any(value => category.Equals(value, StringComparison.OrdinalIgnoreCase)))
             return "Crafting Materials";
 
         return "Miscellaneous";
