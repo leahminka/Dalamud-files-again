@@ -1,107 +1,406 @@
-using Dalamud.Interface.Windowing;
+using System.Numerics;
 using Dalamud.Game.Inventory;
+using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Dalamud.Bindings.ImGui;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 
 namespace InventoryDiscardAssistant;
 
 public sealed class MainWindow : Window, IDisposable
 {
     private readonly Configuration config;
-    private readonly Action save;
     private readonly InventoryScanner scanner;
-    private readonly IClientState clientState;
-    private List<InventoryCandidate> candidates = [];
-    private string status = "Scan your inventory to list candidates.";
-    private bool showPreview;
-    private bool showCategoryConsumables = true;
-    private bool showCategoryMaterials = true;
-    private bool showCategoryOther = true;
+    private readonly IPluginLog log;
+    private List<CatalogItem> catalog = [];
+    private List<InventoryCandidate> preview = [];
+    private readonly HashSet<(GameInventoryType Container, uint Slot)> selectedStacks = [];
+    private string status = "Choose item categories or individual items, then scan.";
+    private bool catalogLoaded;
+    private bool previewOpen;
+    private bool awaitingNativeConfirmation;
+    private List<InventoryCandidate> executionQueue = [];
+    private int executionIndex;
+    private InventoryCandidate? awaitingCandidate;
 
-    public MainWindow(Configuration config, Action save, IGameInventory inventory, IDataManager data, IClientState clientState)
+    public MainWindow(Configuration config, IGameInventory inventory, IDataManager data, IPluginLog log)
         : base("Inventory Discard Assistant")
     {
         this.config = config;
-        this.save = save;
-        this.clientState = clientState;
+        this.log = log;
         scanner = new InventoryScanner(inventory, data);
-        SizeConstraints = new WindowSizeConstraints { MinimumSize = new System.Numerics.Vector2(560, 420), MaximumSize = new System.Numerics.Vector2(1000, 900) };
+        SizeConstraints = new WindowSizeConstraints
+        {
+            MinimumSize = new Vector2(620, 560),
+            MaximumSize = new Vector2(1200, 1000)
+        };
     }
 
     public void Toggle() => IsOpen = !IsOpen;
 
     public override void Draw()
     {
-        ImGui.TextWrapped("Manual inventory cleanup. Nothing is discarded automatically in the background.");
+        AdvanceExecution();
+        ImGui.TextWrapped("Nothing runs in the background. You must start each discard batch here, and the game will ask you to confirm every item.");
         ImGui.Separator();
 
         var enabled = config.Enabled;
         if (ImGui.Checkbox("Enable Auto-Discard (master switch)", ref enabled))
         {
             config.Enabled = enabled;
-            save();
+            config.Save();
+            if (!enabled) StopExecution("Master switch disabled.");
         }
-        var preview = config.RequirePreview;
-        if (ImGui.Checkbox("Require Preview Before Discarding", ref preview))
+        ImGui.SameLine();
+        var previewRequired = config.RequirePreview;
+        if (ImGui.Checkbox("Require Preview Before Discarding", ref previewRequired))
         {
-            config.RequirePreview = preview;
-            save();
+            config.RequirePreview = previewRequired;
+            config.Save();
         }
 
-        ImGui.TextDisabled("Master switch OFF blocks all discard execution. Preview is ON by default.");
+        ImGui.TextDisabled("Master switch OFF blocks execution. Preview is ON by default. The game's native Yes/No prompt is never bypassed.");
         ImGui.Separator();
 
-        var inv = config.ScanInventory;
-        if (ImGui.Checkbox("Scan player inventory", ref inv)) { config.ScanInventory = inv; save(); }
-        var armory = config.ScanArmory;
-        ImGui.SameLine();
-        if (ImGui.Checkbox("Scan armory (not yet implemented)", ref armory))
+        var scanInventory = config.ScanInventory;
+        if (ImGui.Checkbox("Player inventory", ref scanInventory))
         {
-            config.ScanArmory = false;
-            save();
+            config.ScanInventory = scanInventory;
+            config.Save();
+        }
+        ImGui.SameLine();
+        var scanArmory = config.ScanArmory;
+        if (ImGui.Checkbox("Armoury chest", ref scanArmory))
+        {
+            config.ScanArmory = scanArmory;
+            config.Save();
         }
 
-        ImGui.Text("Item filters");
-        ImGui.Checkbox("Consumables", ref showCategoryConsumables);
-        ImGui.SameLine();
-        ImGui.Checkbox("Materials", ref showCategoryMaterials);
-        ImGui.SameLine();
-        ImGui.Checkbox("Other", ref showCategoryOther);
-
-        var query = config.SearchText;
-        if (ImGui.InputText("Search item names", ref query, 128))
-        {
-            config.SearchText = query;
-            save();
-        }
+        EnsureCatalog();
+        DrawFilters();
+        ImGui.Separator();
 
         if (ImGui.Button("Scan Inventory"))
+            ScanCandidates();
+
+        ImGui.SameLine();
+        ImGui.Text($"Preview stacks: {preview.Count}");
+
+        if (config.RequirePreview && preview.Count > 0)
         {
-            candidates = scanner.Scan(config.ScanInventory, false)
-                .Where(x => !config.ExcludedItemIds.Contains(x.ItemId))
-                .Where(x => config.IncludedItemIds.Count == 0 || config.IncludedItemIds.Contains(x.ItemId))
-                .Where(x => string.IsNullOrWhiteSpace(config.SearchText) || x.Name.Contains(config.SearchText, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            status = $"Found {candidates.Count} matching inventory stacks.";
-            showPreview = true;
+            if (ImGui.Button("Review Preview"))
+                previewOpen = true;
         }
 
-        ImGui.Separator();
-        ImGui.Text($"Matching stacks: {candidates.Count}");
-        if (ImGui.BeginChild("candidate-list", new System.Numerics.Vector2(0, 220), true))
+        if (!config.RequirePreview)
         {
-            foreach (var item in candidates)
-                ImGui.Text($"{item.Name} × {item.Quantity}  [{item.Container}, slot {item.Slot}]");
+            ImGui.SameLine();
+            if (ImGui.Button("Discard Matching Items"))
+                BeginExecution(preview);
         }
-        ImGui.EndChild();
 
-        if (config.RequirePreview)
-            ImGui.TextWrapped("Preview-before-discard is enabled. The list above is a scan preview; a second, final confirmation step is required before any item can be discarded.");
-
-        ImGui.TextColored(new System.Numerics.Vector4(1f, 0.75f, 0.25f, 1f),
-            "Discard execution is intentionally unavailable in this build. The native discard call and per-item confirmation flow have not yet passed API/build verification.");
-        ImGui.Text(status);
+        DrawPreview();
+        DrawExecutionStatus();
+        ImGui.TextWrapped(status);
     }
 
-    public void Dispose() { }
+    private void EnsureCatalog()
+    {
+        if (catalogLoaded) return;
+        try
+        {
+            catalog = scanner.GetCatalog().OrderBy(x => x.CategoryName).ThenBy(x => x.Name).ToList();
+            catalogLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            status = $"Could not load item database: {ex.Message}";
+            log.Error(ex, "Failed to load item catalog");
+        }
+    }
+
+    private void DrawFilters()
+    {
+        if (ImGui.CollapsingHeader("Item categories", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            var groups = catalog.GroupBy(x => new { x.CategoryId, x.CategoryName })
+                .Where(g => g.Key.CategoryId != 0)
+                .OrderBy(g => g.Key.CategoryName);
+            foreach (var group in groups)
+            {
+                var selected = config.SelectedCategoryIds.Contains(group.Key.CategoryId);
+                if (ImGui.Checkbox($"{group.Key.CategoryName} ({group.Count()})##cat{group.Key.CategoryId}", ref selected))
+                {
+                    if (selected) config.SelectedCategoryIds.Add(group.Key.CategoryId);
+                    else config.SelectedCategoryIds.Remove(group.Key.CategoryId);
+                    config.Save();
+                }
+            }
+        }
+
+        if (ImGui.CollapsingHeader("Individual item database"))
+        {
+            var query = config.CatalogSearchText;
+            if (ImGui.InputText("Find item##catalog", ref query, 128))
+            {
+                config.CatalogSearchText = query;
+                config.Save();
+            }
+
+            var matches = catalog.Where(x => string.IsNullOrWhiteSpace(query) ||
+                x.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                x.CategoryName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .Take(250).ToList();
+
+            ImGui.TextDisabled($"Showing up to 250 matches. Check Include to select an item; Protect always overrides selection.");
+            using var child = ImGui.BeginChild("catalog-items", new Vector2(0, 180), true);
+            if (child)
+            {
+                foreach (var item in matches)
+                {
+                    ImGui.PushID((int)item.ItemId);
+                    var included = config.SelectedItemIds.Contains(item.ItemId);
+                    if (ImGui.Checkbox("Include", ref included))
+                    {
+                        if (included) config.SelectedItemIds.Add(item.ItemId);
+                        else config.SelectedItemIds.Remove(item.ItemId);
+                        config.Save();
+                    }
+                    ImGui.SameLine();
+                    var protectedItem = config.ExcludedItemIds.Contains(item.ItemId);
+                    if (ImGui.Checkbox("Protect", ref protectedItem))
+                    {
+                        if (protectedItem) config.ExcludedItemIds.Add(item.ItemId);
+                        else config.ExcludedItemIds.Remove(item.ItemId);
+                        config.Save();
+                    }
+                    ImGui.SameLine();
+                    ImGui.Text($"{item.Name}  ({item.CategoryName})");
+                    ImGui.PopID();
+                }
+            }
+        }
+
+        ImGui.Text($"Selected item IDs: {config.SelectedItemIds.Count} | Categories: {config.SelectedCategoryIds.Count} | Protected IDs: {config.ExcludedItemIds.Count}");
+    }
+
+    private void ScanCandidates()
+    {
+        if (!config.ScanInventory && !config.ScanArmory)
+        {
+            status = "Select at least one inventory location to scan.";
+            preview.Clear();
+            return;
+        }
+
+        if (config.SelectedItemIds.Count == 0 && config.SelectedCategoryIds.Count == 0)
+        {
+            status = "No item filters selected. Select one or more categories or individual items first.";
+            preview.Clear();
+            return;
+        }
+
+        try
+        {
+            var gearsetIds = GetGearsetItemIds();
+            preview = scanner.Scan(config.ScanInventory, config.ScanArmory)
+                .Where(x => !config.ExcludedItemIds.Contains(x.BaseItemId) && !config.ExcludedItemIds.Contains(x.ItemId))
+                .Where(x => config.SelectedItemIds.Contains(x.BaseItemId) || config.SelectedCategoryIds.Contains(x.CategoryId))
+                .Where(x => !gearsetIds.Contains(x.BaseItemId) && !gearsetIds.Contains(x.ItemId))
+                .Where(x => string.IsNullOrWhiteSpace(config.SearchText) || x.Name.Contains(config.SearchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(x => x.Name).ToList();
+
+            selectedStacks.Clear();
+            foreach (var item in preview)
+                selectedStacks.Add((item.Container, item.Slot));
+            status = $"Scan complete: {preview.Count} matching stacks. Exclusions and gearset protection were applied.";
+            previewOpen = config.RequirePreview;
+        }
+        catch (Exception ex)
+        {
+            status = $"Inventory scan failed: {ex.Message}";
+            log.Error(ex, "Inventory scan failed");
+        }
+    }
+
+    private unsafe HashSet<uint> GetGearsetItemIds()
+    {
+        var result = new HashSet<uint>();
+        var module = RaptureGearsetModule.Instance();
+        if (module == null) return result;
+
+        for (var i = 0; i < 100; i++)
+        {
+            var gearset = module->GetGearset(i);
+            if (gearset == null || !gearset->Flags.HasFlag(RaptureGearsetModule.GearsetFlag.Exists))
+                continue;
+
+            var indices = new[]
+            {
+                RaptureGearsetModule.GearsetItemIndex.MainHand,
+                RaptureGearsetModule.GearsetItemIndex.OffHand,
+                RaptureGearsetModule.GearsetItemIndex.Head,
+                RaptureGearsetModule.GearsetItemIndex.Body,
+                RaptureGearsetModule.GearsetItemIndex.Hands,
+                RaptureGearsetModule.GearsetItemIndex.Legs,
+                RaptureGearsetModule.GearsetItemIndex.Feet,
+                RaptureGearsetModule.GearsetItemIndex.Ears,
+                RaptureGearsetModule.GearsetItemIndex.Neck,
+                RaptureGearsetModule.GearsetItemIndex.Wrists,
+                RaptureGearsetModule.GearsetItemIndex.RingLeft,
+                RaptureGearsetModule.GearsetItemIndex.RingRight,
+            };
+            foreach (var index in indices)
+            {
+                var itemId = gearset->GetItem(index).ItemId;
+                if (itemId != 0) result.Add(itemId);
+            }
+        }
+        return result;
+    }
+
+    private void DrawPreview()
+    {
+        if (!previewOpen) return;
+        ImGui.Separator();
+        ImGui.Text("Discard preview — uncheck any stack you want to keep.");
+        using (var child = ImGui.BeginChild("preview-items", new Vector2(0, 180), true))
+        {
+            if (child)
+            {
+                foreach (var item in preview)
+                {
+                    ImGui.PushID($"{(uint)item.Container}:{item.Slot}");
+                    var selected = selectedStacks.Contains((item.Container, item.Slot));
+                    if (ImGui.Checkbox("Discard", ref selected))
+                    {
+                        if (selected) selectedStacks.Add((item.Container, item.Slot));
+                        else selectedStacks.Remove((item.Container, item.Slot));
+                    }
+                    ImGui.SameLine();
+                    ImGui.Text($"{item.Name} × {item.Quantity} {(item.IsHq ? "(HQ)" : "")} — {item.Container}, slot {item.Slot}");
+                    ImGui.PopID();
+                }
+            }
+        }
+
+        ImGui.Text($"Selected for this batch: {selectedStacks.Count}");
+        if (ImGui.Button("Confirm Preview & Start"))
+            BeginExecution(preview.Where(x => selectedStacks.Contains((x.Container, x.Slot))).ToList());
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel Preview"))
+            previewOpen = false;
+    }
+
+    private void BeginExecution(IEnumerable<InventoryCandidate> items)
+    {
+        if (!config.Enabled)
+        {
+            status = "Execution blocked: enable the master switch first.";
+            return;
+        }
+        if (awaitingNativeConfirmation || executionQueue.Count > 0)
+        {
+            status = "A discard batch is already active. Stop it before starting another.";
+            return;
+        }
+
+        executionQueue = items.ToList();
+        executionIndex = 0;
+        if (executionQueue.Count == 0)
+        {
+            status = "No stacks selected for discard.";
+            return;
+        }
+        previewOpen = false;
+        RequestNextItem();
+    }
+
+    private void RequestNextItem()
+    {
+        if (!config.Enabled)
+        {
+            StopExecution("Master switch disabled; batch stopped.");
+            return;
+        }
+        if (executionIndex >= executionQueue.Count)
+        {
+            StopExecution("Batch complete.");
+            return;
+        }
+
+        var candidate = executionQueue[executionIndex];
+        if (config.ExcludedItemIds.Contains(candidate.BaseItemId) ||
+            config.ExcludedItemIds.Contains(candidate.ItemId) ||
+            GetGearsetItemIds().Contains(candidate.BaseItemId) ||
+            GetGearsetItemIds().Contains(candidate.ItemId))
+        {
+            executionIndex++;
+            RequestNextItem();
+            return;
+        }
+
+        try
+        {
+            if (!scanner.IsStillSameItem(candidate))
+            {
+                executionIndex++;
+                RequestNextItem();
+                return;
+            }
+
+            // This requests the game's own discard action. The plugin does not click,
+            // accept, or otherwise bypass the native Yes/No confirmation dialog.
+            scanner.RequestNativeDiscard(candidate);
+            awaitingCandidate = candidate;
+            awaitingNativeConfirmation = true;
+            status = $"Waiting for you to confirm in the game's native dialog: {candidate.Name}.";
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "Could not request native discard for {ItemName}", candidate.Name);
+            executionIndex++;
+            status = $"Skipped {candidate.Name}: {ex.Message}";
+            RequestNextItem();
+        }
+    }
+
+    private void AdvanceExecution()
+    {
+        if (!awaitingNativeConfirmation || awaitingCandidate == null) return;
+        if (!config.Enabled)
+        {
+            StopExecution("Master switch disabled; batch stopped.");
+            return;
+        }
+
+        if (!scanner.IsStillSameItem(awaitingCandidate))
+        {
+            awaitingNativeConfirmation = false;
+            awaitingCandidate = null;
+            executionIndex++;
+            RequestNextItem();
+        }
+    }
+
+    private void DrawExecutionStatus()
+    {
+        if (executionQueue.Count == 0 && !awaitingNativeConfirmation) return;
+        ImGui.Separator();
+        ImGui.Text($"Batch progress: {Math.Min(executionIndex + (awaitingNativeConfirmation ? 1 : 0), executionQueue.Count)} / {executionQueue.Count}");
+        ImGui.TextWrapped("Accept or cancel each item using the game's own confirmation dialog. If you cancel a dialog, press Stop Batch here.");
+        if (ImGui.Button("Stop Batch"))
+            StopExecution("Batch stopped by user.");
+    }
+
+    private void StopExecution(string message)
+    {
+        executionQueue.Clear();
+        executionIndex = 0;
+        awaitingCandidate = null;
+        awaitingNativeConfirmation = false;
+        status = message;
+    }
+
+    public void Dispose() => StopExecution("Plugin unloaded.");
 }
