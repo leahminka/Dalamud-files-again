@@ -35,9 +35,10 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         var rows = new List<CatalogItem>();
         foreach (var item in sheet)
         {
-            if (item.RowId == 0 || item.Name.IsEmpty) continue;
+            var itemName = item.Name.ToString();
+            if (item.RowId == 0 || string.IsNullOrWhiteSpace(itemName)) continue;
             var category = item.ItemUICategory.Value;
-            rows.Add(new CatalogItem(item.RowId, item.Name.ToString(), item.ItemUICategory.RowId,
+            rows.Add(new CatalogItem(item.RowId, itemName, item.ItemUICategory.RowId,
                 category.Name.ToString()));
         }
         return rows;
@@ -79,7 +80,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         var manager = InventoryManager.Instance();
         if (manager == null) throw new InvalidOperationException("Inventory manager is unavailable.");
         var container = manager->GetInventoryContainer((InventoryType)candidate.Container);
-        if (container == null || candidate.Slot >= container->Size)
+        if (container == null || candidate.Slot >= (uint)container->Size)
             throw new InvalidOperationException("The inventory slot is no longer valid.");
         var item = container->GetInventorySlot((int)candidate.Slot);
         if (item == null || item->ItemId != candidate.ItemId || item->Quantity <= 0)
