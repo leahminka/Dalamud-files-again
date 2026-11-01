@@ -3,7 +3,7 @@
     "Author": "leahminka",
     "Name": "Inventory Discard Assistant",
     "Punchline": "Review and discard selected inventory items with native confirmation.",
-    "Description": "Manual inventory cleanup with right-panel stack review, category selection, protected exclusions, and optional Ctrl-to-confirm.",
+    "Description": "Scans inventory, supports item and category selection, protects excluded items, and discards only with user confirmation. https://github.com/leahminka/Dalamud-files-again",
     "InternalName": "InventoryDiscardAssistant",
     "AssemblyVersion": "0.1.5.0",
     "TestingAssemblyVersion": null,
