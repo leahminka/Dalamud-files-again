@@ -124,7 +124,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         var container = manager->GetInventoryContainer((InventoryType)candidate.Container);
         if (container == null || candidate.Slot >= (uint)container->Size) return false;
         var item = container->GetInventorySlot((int)candidate.Slot);
-        return item != null && item->ItemId == candidate.ItemId && item->Quantity > 0;
+        return item != null && item->GetItemId() == candidate.ItemId && item->Quantity > 0;
     }
 
     public unsafe void RequestNativeDiscard(InventoryCandidate candidate)
@@ -135,7 +135,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         if (container == null || candidate.Slot >= (uint)container->Size)
             throw new InvalidOperationException("The inventory slot is no longer valid.");
         var item = container->GetInventorySlot((int)candidate.Slot);
-        if (item == null || item->ItemId != candidate.ItemId || item->Quantity <= 0)
+        if (item == null || item->GetItemId() != candidate.ItemId || item->Quantity <= 0)
             throw new InvalidOperationException("The item moved or changed after the scan.");
 
         var agent = AgentInventoryContext.Instance();

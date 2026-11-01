@@ -5,15 +5,15 @@
     "Punchline": "Review and discard selected inventory items with native confirmation.",
     "Description": "Scans inventory, supports item and category selection, protects excluded items, and discards only with user confirmation. https://github.com/leahminka/Dalamud-files-again",
     "InternalName": "InventoryDiscardAssistant",
-    "AssemblyVersion": "0.1.7.0",
+    "AssemblyVersion": "0.1.8.0",
     "TestingAssemblyVersion": null,
     "RepoUrl": "https://github.com/leahminka/Dalamud-files-again",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
     "IsHide": false,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.7/InventoryDiscardAssistant.zip",
-    "DownloadLinkUpdate": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.7/InventoryDiscardAssistant.zip",
-    "LastUpdate": "1793561738"
+    "DownloadLinkInstall": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.8/InventoryDiscardAssistant.zip",
+    "DownloadLinkUpdate": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.8/InventoryDiscardAssistant.zip",
+    "LastUpdate": "1793562504"
   }
 ]

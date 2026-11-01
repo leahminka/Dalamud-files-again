@@ -43,8 +43,8 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.7
-          name: Inventory Discard Assistant v0.1.7
+          tag_name: v0.1.8
+          name: Inventory Discard Assistant v0.1.8
           target_commitish: main
           make_latest: true
           overwrite_files: true

@@ -4,7 +4,7 @@
   "Punchline": "Filter and review inventory discard candidates before taking action.",
   "Description": "A user-controlled inventory cleanup assistant with persistent filters, exclusions, and Ctrl-confirmed discarding.",
   "InternalName": "InventoryDiscardAssistant",
-  "AssemblyVersion": "0.1.7.0",
+  "AssemblyVersion": "0.1.8.0",
   "DalamudApiLevel": 15,
   "ApplicableVersion": "any",
   "RepoUrl": "https://github.com/leahminka/Dalamud-files-again"
