@@ -80,6 +80,13 @@ public sealed class MainWindow : Window, IDisposable
         DrawFilters();
         ImGui.Separator();
 
+        var scanQuery = config.SearchText;
+        if (ImGui.InputText("Filter scanned item names", ref scanQuery, 128))
+        {
+            config.SearchText = scanQuery;
+            config.Save();
+        }
+
         if (ImGui.Button("Scan Inventory"))
             ScanCandidates();
 
