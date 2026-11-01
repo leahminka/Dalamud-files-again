@@ -39,7 +39,7 @@ public sealed class MainWindow : Window, IDisposable
         };
     }
 
-    public void Toggle() => IsOpen = !IsOpen;
+    public new void Toggle() => IsOpen = !IsOpen;
 
     public override void Draw()
     {
