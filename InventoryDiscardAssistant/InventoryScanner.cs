@@ -27,7 +27,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         GameInventoryType.ArmoryHands, GameInventoryType.ArmoryLegs,
         GameInventoryType.ArmoryFeets, GameInventoryType.ArmoryEar,
         GameInventoryType.ArmoryNeck, GameInventoryType.ArmoryWrist,
-        GameInventoryType.ArmoryRings, GameInventoryType.ArmorySoulCrystal
+        GameInventoryType.ArmoryRings
     ];
 
     public IReadOnlyList<CatalogItem> GetCatalog()
