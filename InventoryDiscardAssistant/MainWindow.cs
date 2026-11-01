@@ -114,6 +114,37 @@ public sealed class MainWindow : Window, IDisposable
         if (previewOpen) DrawPreview();
     }
 
+    private void DrawScanOptions()
+    {
+        ImGui.Text("Scan locations");
+        var personal = config.ScanInventory;
+        if (ImGui.Checkbox("Personal Inventory", ref personal))
+        {
+            config.ScanInventory = personal;
+            config.Save();
+        }
+        ImGui.SameLine();
+        var armory = config.ScanArmory;
+        if (ImGui.Checkbox("Armoury Chest", ref armory))
+        {
+            config.ScanArmory = armory;
+            config.Save();
+        }
+        ImGui.SameLine();
+        var saddlebag = config.ScanSaddlebag;
+        if (ImGui.Checkbox("Chocobo Saddlebag", ref saddlebag))
+        {
+            config.ScanSaddlebag = saddlebag;
+            config.Save();
+        }
+        ImGui.SameLine();
+        ImGui.BeginDisabled();
+        var dresser = false;
+        ImGui.Checkbox("Glamour Dresser (not supported)", ref dresser);
+        ImGui.EndDisabled();
+        ImGui.TextDisabled("Saddlebag includes Premium Saddlebag when available. Glamour Dresser contents are not exposed as a safe discardable inventory by this API.");
+    }
+
     private void ScanCandidates()
     {
         try
