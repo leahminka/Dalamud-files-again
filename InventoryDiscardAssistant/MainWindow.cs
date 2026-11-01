@@ -3,6 +3,7 @@ using Dalamud.Game.Inventory;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Textures;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 
 namespace InventoryDiscardAssistant;
@@ -12,6 +13,7 @@ public sealed class MainWindow : Window, IDisposable
     private readonly Configuration config;
     private readonly InventoryScanner scanner;
     private readonly IPluginLog log;
+    private readonly ITextureProvider textures;
     private List<CatalogItem> catalog = [];
     private List<InventoryCandidate> preview = [];
     private readonly HashSet<(GameInventoryType Container, uint Slot)> selectedStacks = [];
@@ -23,11 +25,12 @@ public sealed class MainWindow : Window, IDisposable
     private int executionIndex;
     private InventoryCandidate? awaitingCandidate;
 
-    public MainWindow(Configuration config, IGameInventory inventory, IDataManager data, IPluginLog log)
+    public MainWindow(Configuration config, IGameInventory inventory, IDataManager data, ITextureProvider textures, IPluginLog log)
         : base("Inventory Discard Assistant")
     {
         this.config = config;
         this.log = log;
+        this.textures = textures;
         scanner = new InventoryScanner(inventory, data);
         SizeConstraints = new WindowSizeConstraints
         {
@@ -181,6 +184,8 @@ public sealed class MainWindow : Window, IDisposable
                         else config.ExcludedItemIds.Remove(item.ItemId);
                         config.Save();
                     }
+                    var icon = textures.GetFromGameIcon(new GameIconLookup(item.IconId)).GetWrapOrDefault();
+                    if (icon != null) ImGui.Image(icon.Handle, new Vector2(20, 20));
                     ImGui.SameLine();
                     ImGui.Text($"{item.Name}  ({item.CategoryName})");
                     ImGui.PopID();
@@ -284,6 +289,8 @@ public sealed class MainWindow : Window, IDisposable
                         if (selected) selectedStacks.Add((item.Container, item.Slot));
                         else selectedStacks.Remove((item.Container, item.Slot));
                     }
+                    var icon = textures.GetFromGameIcon(new GameIconLookup(item.IconId)).GetWrapOrDefault();
+                    if (icon != null) ImGui.Image(icon.Handle, new Vector2(24, 24));
                     ImGui.SameLine();
                     ImGui.Text($"{item.Name} × {item.Quantity} {(item.IsHq ? "(HQ)" : "")} — {item.Container}, slot {item.Slot}");
                     ImGui.PopID();
