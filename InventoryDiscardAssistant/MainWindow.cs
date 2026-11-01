@@ -272,9 +272,9 @@ public sealed class MainWindow : Window, IDisposable
         if (!previewOpen) return;
         ImGui.Separator();
         ImGui.Text("Discard preview — uncheck any stack you want to keep.");
-        if (ImGui.BeginChild("preview-items", new Vector2(0, 180), true))
+        var previewChild = ImGui.BeginChild("preview-items", new Vector2(0, 180), true);
+        if (previewChild)
         {
-            {
                 foreach (var item in preview)
                 {
                     ImGui.PushID($"{(uint)item.Container}:{item.Slot}");
@@ -288,9 +288,7 @@ public sealed class MainWindow : Window, IDisposable
                     ImGui.Text($"{item.Name} × {item.Quantity} {(item.IsHq ? "(HQ)" : "")} — {item.Container}, slot {item.Slot}");
                     ImGui.PopID();
                 }
-            }
-            ImGui.EndChild();
-        }
+        ImGui.EndChild();
 
         ImGui.Text($"Selected for this batch: {selectedStacks.Count}");
         if (ImGui.Button("Confirm Preview & Start"))
