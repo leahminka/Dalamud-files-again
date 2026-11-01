@@ -15,6 +15,8 @@ public sealed record CatalogItem(uint ItemId, uint IconId, string Name, uint Cat
 
 public sealed class InventoryScanner(IGameInventory inventory, IDataManager dataManager)
 {
+    // ItemUICategory row 47 is the game's Seafood category, which contains fish items.
+    private const uint SeafoodItemUiCategoryId = 47;
     private static readonly GameInventoryType[] InventoryContainers =
     [
         GameInventoryType.Inventory1, GameInventoryType.Inventory2,
@@ -68,7 +70,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
                 if (slot.IsEmpty || slot.BaseItemId == 0 || slot.Quantity <= 0) continue;
                 if (!itemSheet.TryGetRow(slot.BaseItemId, out var row)) continue;
                 var uiCategory = row.ItemUICategory.Value.Name.ToString();
-                var category = ClassifyItem(row.Name.ToString(), uiCategory);
+                var category = ClassifyItem(row.Name.ToString(), row.ItemUICategory.RowId, uiCategory);
                 result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.ItemUICategory.RowId, row.Icon,
                     row.Name.ToString(), category, slot.Quantity, container, slot.InventorySlot, slot.IsHq));
             }
@@ -76,13 +78,13 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         return result;
     }
 
-    private static string ClassifyItem(string name, string uiCategory)
+    private static string ClassifyItem(string name, uint uiCategoryId, string uiCategory)
     {
         var category = uiCategory.Trim();
         var lower = name.ToLowerInvariant();
 
         // Fish must be the exact UI category; fishing tackle, lures, and bait are never fish.
-        if (category.Equals("Fish", StringComparison.OrdinalIgnoreCase) &&
+        if ((uiCategoryId == SeafoodItemUiCategoryId || category.Equals("Fish", StringComparison.OrdinalIgnoreCase)) &&
             !lower.Contains("lure", StringComparison.Ordinal) &&
             !lower.Contains("bait", StringComparison.Ordinal))
             return "Fish";
