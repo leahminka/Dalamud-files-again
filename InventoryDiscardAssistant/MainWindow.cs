@@ -178,7 +178,7 @@ public sealed class MainWindow : Window, IDisposable
                     }
                     ImGui.SameLine();
                     var protectedItem = config.ExcludedItemIds.Contains(item.ItemId);
-                    if (ImGui.Checkbox("Protect", ref protectedItem))
+                    if (ImGui.Checkbox("Protect / favorite", ref protectedItem))
                     {
                         if (protectedItem) config.ExcludedItemIds.Add(item.ItemId);
                         else config.ExcludedItemIds.Remove(item.ItemId);
@@ -240,7 +240,7 @@ public sealed class MainWindow : Window, IDisposable
     {
         var result = new HashSet<uint>();
         var module = RaptureGearsetModule.Instance();
-        if (module == null) return result;
+        if (module == null) throw new InvalidOperationException("Gearset data is unavailable; scan cancelled to avoid discarding gearset items.");
 
         for (var i = 0; i < 100; i++)
         {
