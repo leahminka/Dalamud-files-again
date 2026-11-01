@@ -95,7 +95,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
             "fang", "claw", "horn", "hide", "pelt", "carapace", "talon", "stinger", "tooth"
         ];
         if (monsterMaterialTerms.Any(term =>
-                Regex.IsMatch(lower, $@"\\b{Regex.Escape(term)}\\b", RegexOptions.CultureInvariant)))
+                Regex.IsMatch(lower, $@"\b{Regex.Escape(term)}\b", RegexOptions.CultureInvariant)))
             return "Monster Materials";
 
         string[] craftingCategories =
