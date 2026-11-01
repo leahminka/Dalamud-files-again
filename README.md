@@ -1,52 +1,6 @@
-# Inventory Discard Assistant
 
-A user-controlled inventory cleanup plugin for Final Fantasy XIV / Dalamud API 15.
-
-## Features
-
-- A small blue “yuff is cute” label is centered near the top of the plugin window.
-
-- Open or close the plugin window with `/aid`; the title-bar X also closes it.
-- The plugin window does not open automatically when the plugin is enabled.
-- Search scanned storage and select individual item types for review. A compact category dropdown provides bulk selection without widening the window.
-- Protect item types with a persistent exclusion list.
-- Review every selected stack directly in the right-hand panel, including its icon, name, HQ marker, quantity, container, and slot.
-- Include or exclude individual stacks and start discarding from that same panel; there is no separate preview window.
-- Resize the inventory and selection panels by dragging the divider.
-- Optional Armoury Chest and Chocobo Saddlebag scanning (including Premium Saddlebag when available).
-- Compact category dropdown for bulk selection. Fish classification uses the exact Fish item category, excluding fishing tackle, lures, and bait. All supported categories remain available in the dropdown.
-- Glamour Dresser is shown as unsupported; its contents are not scanned or offered for discard.
-- Hold Ctrl while clicking the final confirmation button by default. This requirement can be disabled with the **Disable holding Ctrl to discard** setting.
-- Every discard request still uses the game's native confirmation dialog.
-
-## Safety behavior
-
-- No background or automatic scan/discard loop exists. A user must scan, select items, review the selected stacks in the right-hand panel, and explicitly click Confirm Discard.
-- Ctrl confirmation is enabled by default. If disabled, the user can click the final button normally.
-- The plugin never accepts the game's native Yes/No prompt.
-- Protected item IDs override inclusion.
-- Saved gearset equipment IDs are excluded. Equipped slots are not scanned.
-- Before each discard request, the exact container, slot, item ID, and quantity are revalidated.
-- If gearset data cannot be read, the operation is stopped rather than assuming no gearset items exist.
-
-The discard request uses the game's native inventory-context discard entry point through FFXIVClientStructs. This is an unsafe interop boundary and must be rechecked after game/Dalamud updates. It is not a packet injector and does not automate the native confirmation.
-
-## Build
-
-Requirements:
-- .NET 10 SDK
-- Dalamud API 15 development files installed by XIVLauncher, or set DALAMUD_HOME to a folder containing the Dalamud API assemblies.
-
-On Windows with XIVLauncher installed:
-
-    dotnet build InventoryDiscardAssistant/InventoryDiscardAssistant.csproj --configuration Release
-
-GitHub Actions downloads the current API 15 staging build into the standard Dalamud dev path before compiling.
-
-## Custom repository
+Inventory cleanup for FFXIV. Scan inventory, select items or categories, protect exclusions, and discard only with user confirmation.
 
 Custom Dalamud repository feed: https://raw.githubusercontent.com/leahminka/Dalamud-files-again/main/repo.json
 
-Latest release: https://github.com/leahminka/Dalamud-files-again/releases/tag/v0.1.5
-
-To install: open /xlsettings → Experimental → Custom Plugin Repositories, paste the feed URL above, enable it, and save. Then open /xlplugins and search for Inventory Discard Assistant.
+https://github.com/leahminka/Dalamud-files-again
