@@ -18,8 +18,7 @@ public sealed class MainWindow : Window, IDisposable
     private List<InventoryCandidate> scannedItems = [];
     private List<InventoryCandidate> preview = [];
     private readonly HashSet<(GameInventoryType Container, uint Slot)> selectedStacks = [];
-    private string status = "Press Scan Inventory to load the items in your personal inventory.";
-    private bool catalogLoaded;
+    private string status = "Press Scan Personal Inventory to load the items in your inventory.";
     private bool previewOpen;
     private bool awaitingNativeConfirmation;
     private List<InventoryCandidate> executionQueue = [];
@@ -36,6 +35,7 @@ public sealed class MainWindow : Window, IDisposable
         this.log = log;
         this.textures = textures;
         scanner = new InventoryScanner(inventory, data);
+        ShowCloseButton = true;
         SizeConstraints = new WindowSizeConstraints
         {
             MinimumSize = new Vector2(760, 600),
@@ -43,26 +43,15 @@ public sealed class MainWindow : Window, IDisposable
         };
     }
 
-    public new void Toggle() => IsOpen = !IsOpen;
-
     public override void Draw()
     {
         AdvanceExecution();
         ImGui.TextWrapped("Scan first, choose items from your actual inventory, then review before discarding. Nothing runs in the background.");
-        ImGui.Separator();
 
-        var enabled = config.Enabled;
-        if (ImGui.Checkbox("Enable Auto-Discard (master switch)", ref enabled))
+        var disableCtrl = config.DisableHoldCtrlToDiscard;
+        if (ImGui.Checkbox("Disable holding Ctrl to discard", ref disableCtrl))
         {
-            config.Enabled = enabled;
-            config.Save();
-            if (!enabled) StopExecution("Master switch disabled.");
-        }
-        ImGui.SameLine();
-        var previewRequired = config.RequirePreview;
-        if (ImGui.Checkbox("Require Preview Before Discarding", ref previewRequired))
-        {
-            config.RequirePreview = previewRequired;
+            config.DisableHoldCtrlToDiscard = disableCtrl;
             config.Save();
         }
 
@@ -128,8 +117,6 @@ public sealed class MainWindow : Window, IDisposable
     {
         try
         {
-            // Always scan the four personal inventory bags first. No selection filters
-            // are required to discover the contents of the player's inventory.
             scannedItems = scanner.Scan(includeInventory: true, includeArmory: config.ScanArmory).ToList();
             status = scannedItems.Count == 0
                 ? "Scan complete: no items were found in the selected inventory locations."
@@ -261,18 +248,9 @@ public sealed class MainWindow : Window, IDisposable
         }
         ImGui.EndChild();
 
-        if (selected.Count > 0)
-        {
-            if (ImGui.Button("Build Discard Preview", new Vector2(-1, 0)))
-            {
-                BuildPreview();
-            }
-            if (!config.RequirePreview)
-            {
-                if (ImGui.Button("Discard Selected (skip preview)", new Vector2(-1, 0)))
-                    BeginExecution(GetSelectedCandidates());
-            }
-        }
+        if (selected.Count > 0 && ImGui.Button("Build Discard Preview", new Vector2(-1, 0)))
+            BuildPreview();
+
         ImGui.TextDisabled($"Protected item types: {config.ExcludedItemIds.Count}");
     }
 
@@ -287,8 +265,9 @@ public sealed class MainWindow : Window, IDisposable
 
     private void BuildPreview()
     {
-        preview = GetSelectedCandidates().Where(x => !GetGearsetItemIds().Contains(x.BaseItemId) &&
-            !GetGearsetItemIds().Contains(x.ItemId)).ToList();
+        var gearsetIds = GetGearsetItemIds();
+        preview = GetSelectedCandidates().Where(x => !gearsetIds.Contains(x.BaseItemId) &&
+            !gearsetIds.Contains(x.ItemId)).ToList();
         selectedStacks.Clear();
         foreach (var item in preview) selectedStacks.Add((item.Container, item.Slot));
         previewOpen = true;
@@ -352,19 +331,23 @@ public sealed class MainWindow : Window, IDisposable
         ImGui.EndChild();
 
         ImGui.Text($"Selected stacks: {selectedStacks.Count}");
-        if (ImGui.Button("Confirm Preview & Start"))
-            BeginExecution(preview.Where(x => selectedStacks.Contains((x.Container, x.Slot))).ToList());
+        var requiresCtrl = !config.DisableHoldCtrlToDiscard;
+        var buttonLabel = requiresCtrl ? "Hold Ctrl + Click to Confirm & Start" : "Confirm & Start Discard";
+        if (ImGui.Button(buttonLabel, new Vector2(-1, 0)))
+        {
+            if (requiresCtrl && !ImGui.GetIO().KeyCtrl)
+                status = "Confirmation not started. Hold Ctrl while clicking the button to discard the selected stacks.";
+            else
+                BeginExecution(preview.Where(x => selectedStacks.Contains((x.Container, x.Slot))).ToList());
+        }
+        if (requiresCtrl)
+            ImGui.TextDisabled("Ctrl must be held at the moment you click the confirmation button.");
         ImGui.SameLine();
         if (ImGui.Button("Cancel Preview")) previewOpen = false;
     }
 
     private void BeginExecution(IEnumerable<InventoryCandidate> items)
     {
-        if (!config.Enabled)
-        {
-            status = "Execution blocked: enable the master switch first.";
-            return;
-        }
         if (awaitingNativeConfirmation || executionQueue.Count > 0)
         {
             status = "A discard batch is already active. Stop it before starting another.";
@@ -384,7 +367,6 @@ public sealed class MainWindow : Window, IDisposable
 
     private void RequestNextItem()
     {
-        if (!config.Enabled) { StopExecution("Master switch disabled; batch stopped."); return; }
         if (executionIndex >= executionQueue.Count) { StopExecution("Batch complete."); return; }
 
         var candidate = executionQueue[executionIndex];
@@ -423,7 +405,6 @@ public sealed class MainWindow : Window, IDisposable
     private void AdvanceExecution()
     {
         if (!awaitingNativeConfirmation || awaitingCandidate == null) return;
-        if (!config.Enabled) { StopExecution("Master switch disabled; batch stopped."); return; }
         if (!scanner.IsStillSameItem(awaitingCandidate))
         {
             awaitingNativeConfirmation = false;

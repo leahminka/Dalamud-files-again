@@ -2,32 +2,30 @@
 
 A user-controlled inventory cleanup plugin for Final Fantasy XIV / Dalamud API 15.
 
-## Features in this source version
+## Features
 
-- Dynamic item-category checkboxes sourced from the game's Item / ItemUICategory sheets.
-- Searchable item catalog with individual Include and Protect/Favorite toggles.
-- Persistent item selections, protected IDs, category selections, scan preferences, and preview preference.
-- Inventory and optional Armoury Chest scanning.
-- Preview of matching stacks with item icon, name, HQ marker, quantity, container, and slot.
-- Per-stack include/exclude controls in the preview.
-- Gearset items are excluded from scan candidates.
-- A master enable switch blocks execution when off.
-- Preview-before-discard is enabled by default.
-- Each discard request opens the game's own native confirmation. The plugin never accepts that prompt.
+- Open or close the plugin window with `/aid`; the title-bar X also closes it.
+- The plugin window does not open automatically when the plugin is enabled.
+- Search personal inventory and select individual item types for review.
+- Protect item types with a persistent exclusion list.
+- Review every selected stack, including its icon, name, HQ marker, quantity, container, and slot.
+- Include or exclude individual stacks in the discard preview.
+- Resize the inventory and selection panels by dragging the divider.
+- Optional Armoury Chest scanning.
+- Hold Ctrl while clicking the final confirmation button by default. This requirement can be disabled with the **Disable holding Ctrl to discard** setting.
+- Every discard request still uses the game's native confirmation dialog.
 
-## Important safety behavior
+## Safety behavior
 
-- The plugin does not discard in the background. A user must press Scan and then the relevant discard action.
-- When preview is enabled, the user must review the list and press Confirm Preview & Start.
-- When preview is disabled, Discard Matching Items starts the selected batch directly.
-- The game still presents its native Yes/No confirmation for each stack. The user must accept each one.
-- If a native confirmation is cancelled, press Stop Batch to end the waiting sequence.
-- Protected item IDs always override category and individual-item selection.
-- Items in equipped slots are not scanned. Items referenced by saved gearsets are excluded.
-- The Protect/Favorite list is user-maintained. FFXIV does not expose a general-purpose favorite item flag through the inventory API.
-- If gearset data cannot be read, scanning is aborted rather than assuming no gearset items exist.
+- No background or automatic scan/discard loop exists. A user must scan, select items, review the preview, and explicitly click the final confirmation button.
+- Ctrl confirmation is enabled by default. If disabled, the user can click the final button normally.
+- The plugin never accepts the game's native Yes/No prompt.
+- Protected item IDs override inclusion.
+- Saved gearset equipment IDs are excluded. Equipped slots are not scanned.
+- Before each discard request, the exact container, slot, item ID, and quantity are revalidated.
+- If gearset data cannot be read, the operation is stopped rather than assuming no gearset items exist.
 
-The discard request uses the game's native inventory-context discard entry point through FFXIVClientStructs. That is an unsafe interop boundary and must be rechecked after game/Dalamud updates. It is not a packet injector and does not automate the native confirmation.
+The discard request uses the game's native inventory-context discard entry point through FFXIVClientStructs. This is an unsafe interop boundary and must be rechecked after game/Dalamud updates. It is not a packet injector and does not automate the native confirmation.
 
 ## Build
 
@@ -41,18 +39,10 @@ On Windows with XIVLauncher installed:
 
 GitHub Actions downloads the current API 15 staging build into the standard Dalamud dev path before compiling.
 
-## Install for local testing
-
-1. Build the project.
-2. In FFXIV, open Dalamud settings with /xlsettings.
-3. Under Experimental → Dev Plugin Locations, add the plugin build output folder or the built DLL.
-4. Open /xlplugins, find Installed Dev Plugins, and enable Inventory Discard Assistant.
-5. Start with a nonessential, low-value test item and verify the game's native confirmation behavior.
-
 ## Custom repository
 
 Custom Dalamud repository feed: https://raw.githubusercontent.com/leahminka/Dalamud-files-again/main/repo.json
 
-First packaged release: https://github.com/leahminka/Dalamud-files-again/releases/tag/v0.1.0
+Latest release: https://github.com/leahminka/Dalamud-files-again/releases/tag/v0.1.2
 
 To install: open /xlsettings → Experimental → Custom Plugin Repositories, paste the feed URL above, enable it, and save. Then open /xlplugins and search for Inventory Discard Assistant.

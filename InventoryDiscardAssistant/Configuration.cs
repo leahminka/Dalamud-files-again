@@ -7,9 +7,8 @@ namespace InventoryDiscardAssistant;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 2;
-    public bool Enabled { get; set; }
-    public bool RequirePreview { get; set; } = true;
+    public int Version { get; set; } = 3;
+    public bool DisableHoldCtrlToDiscard { get; set; }
     public bool ScanInventory { get; set; } = true;
     public bool ScanArmory { get; set; }
     public string SearchText { get; set; } = string.Empty;
