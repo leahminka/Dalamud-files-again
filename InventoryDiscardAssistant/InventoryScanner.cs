@@ -69,7 +69,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
             {
                 if (slot.IsEmpty || slot.BaseItemId == 0 || slot.Quantity <= 0) continue;
                 if (!itemSheet.TryGetRow(slot.BaseItemId, out var row)) continue;
-                if (!includeCollectibles && row.IsCollectable) continue;
+                if (!includeCollectibles && slot.IsCollectable) continue;
                 var uiCategory = row.ItemUICategory.Value.Name.ToString();
                 var category = ClassifyItem(row.Name.ToString(), row.ItemUICategory.RowId, uiCategory);
                 result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.ItemUICategory.RowId, row.Icon,
