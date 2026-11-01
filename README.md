@@ -12,7 +12,7 @@ A user-controlled inventory cleanup plugin for Final Fantasy XIV / Dalamud API 1
 - Include or exclude individual stacks in the discard preview.
 - Resize the inventory and selection panels by dragging the divider.
 - Optional Armoury Chest and Chocobo Saddlebag scanning (including Premium Saddlebag when available).
-- Quick bulk selection for Fish, Monster Materials, Crafting Materials, Dyes, and Miscellaneous.
+- Quick bulk selection for Fish, Monster Materials, Crafting Materials, Dyes, and Miscellaneous. Monster-material grouping uses item-name clues, so review the preview rather than treating the category as a perfect game taxonomy.
 - Glamour Dresser is shown as unsupported; its contents are not scanned or offered for discard.
 - Hold Ctrl while clicking the final confirmation button by default. This requirement can be disabled with the **Disable holding Ctrl to discard** setting.
 - Every discard request still uses the game's native confirmation dialog.
