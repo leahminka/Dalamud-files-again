@@ -1,0 +1,19 @@
+[
+  {
+    "Author": "leahminka",
+    "Name": "Inventory Discard Assistant",
+    "Punchline": "Review and discard selected inventory items with native confirmation.",
+    "Description": "Manual, preview-first inventory cleanup. Filter by game item category or individual item, protect exclusions and saved gearset items, and confirm every stack using the game's native Yes/No dialog.",
+    "InternalName": "InventoryDiscardAssistant",
+    "AssemblyVersion": "0.1.0.0",
+    "TestingAssemblyVersion": null,
+    "RepoUrl": "https://github.com/leahminka/Dalamud-files-again",
+    "ApplicableVersion": "any",
+    "DalamudApiLevel": 15,
+    "IsHide": false,
+    "IsTestingExclusive": false,
+    "DownloadLinkInstall": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.0/InventoryDiscardAssistant.zip",
+    "DownloadLinkUpdate": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.0/InventoryDiscardAssistant.zip",
+    "LastUpdate": "1793491200"
+  }
+]
