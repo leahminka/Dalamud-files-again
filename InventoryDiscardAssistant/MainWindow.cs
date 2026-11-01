@@ -288,6 +288,7 @@ public sealed class MainWindow : Window, IDisposable
                     ImGui.Text($"{item.Name} × {item.Quantity} {(item.IsHq ? "(HQ)" : "")} — {item.Container}, slot {item.Slot}");
                     ImGui.PopID();
                 }
+        }
         ImGui.EndChild();
 
         ImGui.Text($"Selected for this batch: {selectedStacks.Count}");
