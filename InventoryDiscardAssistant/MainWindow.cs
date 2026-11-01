@@ -18,6 +18,7 @@ public sealed class MainWindow : Window, IDisposable
     private readonly HashSet<(GameInventoryType Container, uint Slot)> excludedStacks = [];
     private string status = "Press Scan Personal Inventory to load the items in your inventory.";
     private bool awaitingNativeConfirmation;
+    private bool hasScanned;
     private List<InventoryCandidate> executionQueue = [];
     private int executionIndex;
     private InventoryCandidate? awaitingCandidate;
@@ -58,6 +59,14 @@ public sealed class MainWindow : Window, IDisposable
         {
             config.DisableHoldCtrlToDiscard = disableCtrl;
             config.Save();
+        }
+        ImGui.SameLine();
+        var includeCollectibles = config.IncludeCollectibles;
+        if (ImGui.Checkbox("Include Collectibles", ref includeCollectibles))
+        {
+            config.IncludeCollectibles = includeCollectibles;
+            config.Save();
+            if (hasScanned) ScanCandidates();
         }
 
         ImGui.Separator();
@@ -151,7 +160,8 @@ public sealed class MainWindow : Window, IDisposable
     {
         try
         {
-            scannedItems = scanner.Scan(config.ScanInventory, config.ScanArmory, config.ScanSaddlebag).ToList();
+            scannedItems = scanner.Scan(config.ScanInventory, config.ScanArmory, config.ScanSaddlebag, config.IncludeCollectibles).ToList();
+            hasScanned = true;
             status = scannedItems.Count == 0
                 ? "Scan complete: no items were found in the selected inventory locations."
                 : $"Scan complete: found {scannedItems.Count} item stacks. Toggle items below to select them.";
@@ -160,6 +170,7 @@ public sealed class MainWindow : Window, IDisposable
         catch (Exception ex)
         {
             scannedItems.Clear();
+            hasScanned = false;
             status = $"Inventory scan failed: {ex.Message}";
             log.Error(ex, "Inventory scan failed");
         }
