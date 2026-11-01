@@ -179,6 +179,7 @@ public sealed class MainWindow : Window, IDisposable
                     ImGui.PopID();
                 }
             }
+            ImGui.EndChild();
         }
 
         ImGui.Text($"Selected item IDs: {config.SelectedItemIds.Count} | Categories: {config.SelectedCategoryIds.Count} | Protected IDs: {config.ExcludedItemIds.Count}");
@@ -264,9 +265,8 @@ public sealed class MainWindow : Window, IDisposable
         if (!previewOpen) return;
         ImGui.Separator();
         ImGui.Text("Discard preview — uncheck any stack you want to keep.");
-        using (var child = ImGui.BeginChild("preview-items", new Vector2(0, 180), true))
+        if (ImGui.BeginChild("preview-items", new Vector2(0, 180), true))
         {
-            if (child)
             {
                 foreach (var item in preview)
                 {
@@ -282,6 +282,7 @@ public sealed class MainWindow : Window, IDisposable
                     ImGui.PopID();
                 }
             }
+            ImGui.EndChild();
         }
 
         ImGui.Text($"Selected for this batch: {selectedStacks.Count}");
