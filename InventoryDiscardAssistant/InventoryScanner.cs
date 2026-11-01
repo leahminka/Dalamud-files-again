@@ -86,6 +86,8 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         if (item == null || item->ItemId != candidate.ItemId || item->Quantity <= 0)
             throw new InvalidOperationException("The item moved or changed after the scan.");
 
-        AgentInventoryContext.Instance()->DiscardItem(item, item->Container, item->Slot, 0);
+        var agent = AgentInventoryContext.Instance();
+        if (agent == null) throw new InvalidOperationException("The inventory context agent is unavailable.");
+        agent->DiscardItem(item, item->Container, item->Slot, 0);
     }
 }
