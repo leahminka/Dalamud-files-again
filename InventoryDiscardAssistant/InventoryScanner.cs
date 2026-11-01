@@ -6,7 +6,7 @@ using Lumina.Excel.Sheets;
 namespace InventoryDiscardAssistant;
 
 public sealed record InventoryCandidate(
-    uint ItemId, uint BaseItemId, string Name, string Category, int Quantity,
+    uint ItemId, uint BaseItemId, uint CategoryId, string Name, string Category, int Quantity,
     GameInventoryType Container, uint Slot, bool IsHq);
 
 public sealed record CatalogItem(uint ItemId, string Name, uint CategoryId, string CategoryName);
@@ -57,7 +57,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
                 if (slot.IsEmpty || slot.BaseItemId == 0 || slot.Quantity <= 0) continue;
                 if (!dataManager.GetExcelSheet<Item>().TryGetRow(slot.BaseItemId, out var row)) continue;
                 var category = row.ItemUICategory.Value.Name.ToString();
-                result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.Name.ToString(),
+                result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.ItemUICategory.RowId, row.Name.ToString(),
                     category, slot.Quantity, container, slot.InventorySlot, slot.IsHq));
             }
         }
@@ -69,7 +69,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         var manager = InventoryManager.Instance();
         if (manager == null) return false;
         var container = manager->GetInventoryContainer((InventoryType)candidate.Container);
-        if (container == null || candidate.Slot >= container->Size) return false;
+        if (container == null || candidate.Slot >= (uint)container->Size) return false;
         var item = container->GetInventorySlot((int)candidate.Slot);
         return item != null && item->ItemId == candidate.ItemId && item->Quantity > 0;
     }
