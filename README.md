@@ -51,7 +51,11 @@ GitHub Actions downloads the current API 15 staging build into the standard Dala
 
 ## Custom repository
 
-The custom repository feed will be enabled after a successful packaged build and release. Do not add a feed URL until the first release ZIP exists.
+Custom Dalamud repository feed: https://raw.githubusercontent.com/leahminka/Dalamud-files-again/main/repo.json
+
+First packaged release: https://github.com/leahminka/Dalamud-files-again/releases/tag/v0.1.0
+
+To install: open /xlsettings → Experimental → Custom Plugin Repositories, paste the feed URL above, enable it, and save. Then open /xlplugins and search for Inventory Discard Assistant.
 
 ## AI assistance
 
