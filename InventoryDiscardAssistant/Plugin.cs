@@ -9,7 +9,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static IGameInventory Inventory { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
-    [PluginService] internal static IClientState ClientState { get; private set; } = null!;
+    [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
     private readonly Configuration configuration;
     private readonly MainWindow window;
@@ -19,13 +19,14 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        window = new MainWindow(configuration, SaveConfiguration, Inventory, DataManager, ClientState);
+        configuration.SelectedItemIds ??= [];
+        configuration.ExcludedItemIds ??= [];
+        configuration.SelectedCategoryIds ??= [];
+        window = new MainWindow(configuration, Inventory, DataManager, Log);
         PluginInterface.UiBuilder.Draw += window.Draw;
         PluginInterface.UiBuilder.OpenMainUi += window.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi += window.Toggle;
     }
-
-    private void SaveConfiguration() => PluginInterface.SavePluginConfig(configuration);
 
     public void Dispose()
     {
