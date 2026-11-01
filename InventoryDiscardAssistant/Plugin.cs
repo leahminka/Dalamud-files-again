@@ -9,6 +9,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static IGameInventory Inventory { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
+    [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
     private readonly Configuration configuration;
@@ -22,7 +23,7 @@ public sealed class Plugin : IDalamudPlugin
         configuration.SelectedItemIds ??= [];
         configuration.ExcludedItemIds ??= [];
         configuration.SelectedCategoryIds ??= [];
-        window = new MainWindow(configuration, Inventory, DataManager, Log);
+        window = new MainWindow(configuration, Inventory, DataManager, TextureProvider, Log);
         PluginInterface.UiBuilder.Draw += window.Draw;
         PluginInterface.UiBuilder.OpenMainUi += window.Toggle;
         PluginInterface.UiBuilder.OpenConfigUi += window.Toggle;
