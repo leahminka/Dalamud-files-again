@@ -57,6 +57,3 @@ First packaged release: https://github.com/leahminka/Dalamud-files-again/release
 
 To install: open /xlsettings → Experimental → Custom Plugin Repositories, paste the feed URL above, enable it, and save. Then open /xlplugins and search for Inventory Discard Assistant.
 
-## AI assistance
-
-This project was developed with AI assistance. It is not an official Dalamud plugin and has not been submitted to the official plugin repository.
