@@ -339,10 +339,7 @@ public sealed class MainWindow : Window, IDisposable
         ImGui.BeginDisabled(string.IsNullOrEmpty(selectedCategory));
         if (ImGui.Button("Select All in Category"))
         {
-            foreach (var item in GetVisibleSummaries().Where(x =>
-                         selectedCategory.Equals("Fish", StringComparison.OrdinalIgnoreCase)
-                             ? x.Category.Trim().Equals("Fish", StringComparison.OrdinalIgnoreCase)
-                             : x.Category == selectedCategory))
+            foreach (var item in GetVisibleSummaries().Where(x => x.Category == selectedCategory))
                 if (!config.ExcludedItemIds.Contains(item.ItemId))
                     config.SelectedItemIds.Add(item.ItemId);
             config.Save();
