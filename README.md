@@ -56,4 +56,3 @@ Custom Dalamud repository feed: https://raw.githubusercontent.com/leahminka/Dala
 First packaged release: https://github.com/leahminka/Dalamud-files-again/releases/tag/v0.1.0
 
 To install: open /xlsettings → Experimental → Custom Plugin Repositories, paste the feed URL above, enable it, and save. Then open /xlplugins and search for Inventory Discard Assistant.
-
