@@ -6,10 +6,10 @@ using Lumina.Excel.Sheets;
 namespace InventoryDiscardAssistant;
 
 public sealed record InventoryCandidate(
-    uint ItemId, uint BaseItemId, uint CategoryId, string Name, string Category, int Quantity,
+    uint ItemId, uint BaseItemId, uint CategoryId, uint IconId, string Name, string Category, int Quantity,
     GameInventoryType Container, uint Slot, bool IsHq);
 
-public sealed record CatalogItem(uint ItemId, string Name, uint CategoryId, string CategoryName);
+public sealed record CatalogItem(uint ItemId, uint IconId, string Name, uint CategoryId, string CategoryName);
 
 public sealed class InventoryScanner(IGameInventory inventory, IDataManager dataManager)
 {
@@ -38,7 +38,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
             var itemName = item.Name.ToString();
             if (item.RowId == 0 || string.IsNullOrWhiteSpace(itemName)) continue;
             var category = item.ItemUICategory.Value;
-            rows.Add(new CatalogItem(item.RowId, itemName, item.ItemUICategory.RowId,
+            rows.Add(new CatalogItem(item.RowId, item.Icon, itemName, item.ItemUICategory.RowId,
                 category.Name.ToString()));
         }
         return rows;
@@ -58,7 +58,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
                 if (slot.IsEmpty || slot.BaseItemId == 0 || slot.Quantity <= 0) continue;
                 if (!dataManager.GetExcelSheet<Item>().TryGetRow(slot.BaseItemId, out var row)) continue;
                 var category = row.ItemUICategory.Value.Name.ToString();
-                result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.ItemUICategory.RowId, row.Name.ToString(),
+                result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.ItemUICategory.RowId, row.Icon, row.Name.ToString(),
                     category, slot.Quantity, container, slot.InventorySlot, slot.IsHq));
             }
         }
