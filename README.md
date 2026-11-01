@@ -14,7 +14,7 @@ A user-controlled inventory cleanup plugin for Final Fantasy XIV / Dalamud API 1
 - Include or exclude individual stacks and start discarding from that same panel; there is no separate preview window.
 - Resize the inventory and selection panels by dragging the divider.
 - Optional Armoury Chest and Chocobo Saddlebag scanning (including Premium Saddlebag when available).
-- Compact category dropdown for bulk selection. Fish classification uses the exact Fish item category, excluding fishing tackle and lures.
+- Compact category dropdown for bulk selection. Fish classification uses the exact Fish item category, excluding fishing tackle, lures, and bait. All supported categories remain available in the dropdown.
 - Glamour Dresser is shown as unsupported; its contents are not scanned or offered for discard.
 - Hold Ctrl while clicking the final confirmation button by default. This requirement can be disabled with the **Disable holding Ctrl to discard** setting.
 - Every discard request still uses the game's native confirmation dialog.

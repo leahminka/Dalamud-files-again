@@ -3,7 +3,7 @@
     "Author": "leahminka",
     "Name": "Inventory Discard Assistant",
     "Punchline": "Review and discard selected inventory items with native confirmation.",
-    "Description": "Manual inventory cleanup with item selection, stack preview, protected exclusions, and optional Ctrl-to-confirm.",
+    "Description": "Manual inventory cleanup with right-panel stack review, category selection, protected exclusions, and optional Ctrl-to-confirm.",
     "InternalName": "InventoryDiscardAssistant",
     "AssemblyVersion": "0.1.5.0",
     "TestingAssemblyVersion": null,
