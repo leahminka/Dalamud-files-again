@@ -11,6 +11,7 @@ public sealed class Configuration : IPluginConfiguration
     public bool DisableHoldCtrlToDiscard { get; set; }
     public bool ScanInventory { get; set; } = true;
     public bool ScanArmory { get; set; }
+    public bool ScanSaddlebag { get; set; }
     public string SearchText { get; set; } = string.Empty;
     public string CatalogSearchText { get; set; } = string.Empty;
     public float InventoryPanelWidth { get; set; } = 520f;

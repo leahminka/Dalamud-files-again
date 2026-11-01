@@ -5,15 +5,15 @@
     "Punchline": "Review and discard selected inventory items with native confirmation.",
     "Description": "Manual inventory cleanup with item selection, stack preview, protected exclusions, and optional Ctrl-to-confirm.",
     "InternalName": "InventoryDiscardAssistant",
-    "AssemblyVersion": "0.1.2.0",
+    "AssemblyVersion": "0.1.3.0",
     "TestingAssemblyVersion": null,
     "RepoUrl": "https://github.com/leahminka/Dalamud-files-again",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
     "IsHide": false,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.2/InventoryDiscardAssistant.zip",
-    "DownloadLinkUpdate": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.2/InventoryDiscardAssistant.zip",
-    "LastUpdate": "1793553061"
+    "DownloadLinkInstall": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.3/InventoryDiscardAssistant.zip",
+    "DownloadLinkUpdate": "https://github.com/leahminka/Dalamud-files-again/releases/download/v0.1.3/InventoryDiscardAssistant.zip",
+    "LastUpdate": "1793560000"
   }
 ]

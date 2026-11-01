@@ -46,7 +46,8 @@ public sealed class MainWindow : Window, IDisposable
     public override void Draw()
     {
         AdvanceExecution();
-        ImGui.TextWrapped("Scan first, choose items from your actual inventory, then review before discarding. Nothing runs in the background.");
+        ImGui.TextWrapped("Scan selected storage, choose items, then review every stack before discarding. Nothing runs in the background.");
+        DrawScanOptions();
 
         var disableCtrl = config.DisableHoldCtrlToDiscard;
         if (ImGui.Checkbox("Disable holding Ctrl to discard", ref disableCtrl))
@@ -65,7 +66,7 @@ public sealed class MainWindow : Window, IDisposable
             config.Save();
         }
 
-        if (ImGui.Button("Scan Personal Inventory"))
+        if (ImGui.Button("Scan Selected Locations"))
             ScanCandidates();
         ImGui.SameLine();
         ImGui.TextDisabled($"{scannedItems.Count} inventory stacks scanned");
@@ -117,7 +118,7 @@ public sealed class MainWindow : Window, IDisposable
     {
         try
         {
-            scannedItems = scanner.Scan(includeInventory: true, includeArmory: config.ScanArmory).ToList();
+            scannedItems = scanner.Scan(config.ScanInventory, config.ScanArmory, config.ScanSaddlebag).ToList();
             status = scannedItems.Count == 0
                 ? "Scan complete: no items were found in the selected inventory locations."
                 : $"Scan complete: found {scannedItems.Count} item stacks. Toggle items below to select them.";
@@ -147,12 +148,12 @@ public sealed class MainWindow : Window, IDisposable
 
     private void DrawInventoryPanel()
     {
-        ImGui.Text($"Personal inventory ({GetVisibleSummaries().Count} unique items)");
+        ImGui.Text($"Scanned items ({GetVisibleSummaries().Count} unique items)");
         ImGui.Separator();
         var summaries = GetVisibleSummaries();
         if (scannedItems.Count == 0)
         {
-            ImGui.TextWrapped("Your inventory list is empty. Press Scan Personal Inventory above to read your four personal inventory bags.");
+            ImGui.TextWrapped("No items found. Check the scan locations above, then press Scan Selected Locations.");
             return;
         }
 
@@ -213,6 +214,7 @@ public sealed class MainWindow : Window, IDisposable
     {
         var selected = GetVisibleSelectedItems();
         ImGui.Text($"Selected to discard ({selected.Count})");
+        DrawCategorySelector();
         ImGui.Separator();
 
         if (ImGui.Button("Select All"))
@@ -248,10 +250,31 @@ public sealed class MainWindow : Window, IDisposable
         }
         ImGui.EndChild();
 
-        if (selected.Count > 0 && ImGui.Button("Build Discard Preview", new Vector2(-1, 0)))
+        if (selected.Count > 0 && ImGui.Button("Confirm Discard", new Vector2(-1, 0)))
             BuildPreview();
 
         ImGui.TextDisabled($"Protected item types: {config.ExcludedItemIds.Count}");
+    }
+
+    private void DrawCategorySelector()
+    {
+        var categories = GetVisibleSummaries().Select(x => x.Category).Distinct().OrderBy(x => x).ToArray();
+        if (categories.Length == 0) return;
+        ImGui.TextDisabled("Bulk select by category");
+        foreach (var category in categories)
+        {
+            ImGui.PushID(category);
+            if (ImGui.SmallButton("Select " + category))
+            {
+                foreach (var item in GetVisibleSummaries().Where(x => x.Category == category))
+                    if (!config.ExcludedItemIds.Contains(item.ItemId))
+                        config.SelectedItemIds.Add(item.ItemId);
+                config.Save();
+            }
+            ImGui.SameLine();
+            ImGui.PopID();
+        }
+        ImGui.NewLine();
     }
 
     private List<ItemSummary> GetVisibleSelectedItems() =>

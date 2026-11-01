@@ -27,7 +27,13 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         GameInventoryType.ArmoryHands, GameInventoryType.ArmoryLegs,
         GameInventoryType.ArmoryFeets, GameInventoryType.ArmoryEar,
         GameInventoryType.ArmoryNeck, GameInventoryType.ArmoryWrist,
-        GameInventoryType.ArmoryRings
+        GameInventoryType.ArmoryRings, GameInventoryType.ArmorySoulCrystal
+    ];
+
+    private static readonly GameInventoryType[] SaddlebagContainers =
+    [
+        GameInventoryType.SaddleBag1, GameInventoryType.SaddleBag2,
+        GameInventoryType.PremiumSaddleBag1, GameInventoryType.PremiumSaddleBag2
     ];
 
     public IReadOnlyList<CatalogItem> GetCatalog()
@@ -45,25 +51,57 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         return rows;
     }
 
-    public IReadOnlyList<InventoryCandidate> Scan(bool includeInventory, bool includeArmory)
+    public IReadOnlyList<InventoryCandidate> Scan(bool includeInventory, bool includeArmory, bool includeSaddlebag)
     {
         var result = new List<InventoryCandidate>();
         var containers = new List<GameInventoryType>();
         if (includeInventory) containers.AddRange(InventoryContainers);
         if (includeArmory) containers.AddRange(ArmoryContainers);
+        if (includeSaddlebag) containers.AddRange(SaddlebagContainers);
 
+        var itemSheet = dataManager.GetExcelSheet<Item>();
         foreach (var container in containers)
         {
             foreach (var slot in inventory.GetInventoryItems(container))
             {
                 if (slot.IsEmpty || slot.BaseItemId == 0 || slot.Quantity <= 0) continue;
-                if (!dataManager.GetExcelSheet<Item>().TryGetRow(slot.BaseItemId, out var row)) continue;
-                var category = row.ItemUICategory.Value.Name.ToString();
-                result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.ItemUICategory.RowId, row.Icon, row.Name.ToString(),
-                    category, slot.Quantity, container, slot.InventorySlot, slot.IsHq));
+                if (!itemSheet.TryGetRow(slot.BaseItemId, out var row)) continue;
+                var uiCategory = row.ItemUICategory.Value.Name.ToString();
+                var category = ClassifyItem(row.Name.ToString(), uiCategory);
+                result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.ItemUICategory.RowId, row.Icon,
+                    row.Name.ToString(), category, slot.Quantity, container, slot.InventorySlot, slot.IsHq));
             }
         }
         return result;
+    }
+
+    private static string ClassifyItem(string name, string uiCategory)
+    {
+        var lower = name.ToLowerInvariant();
+        if (uiCategory.Contains("fish", StringComparison.OrdinalIgnoreCase)) return "Fish";
+        if (uiCategory.Contains("dye", StringComparison.OrdinalIgnoreCase) ||
+            lower.Contains("dye", StringComparison.Ordinal)) return "Dyes";
+
+        string[] monsterMaterialTerms =
+        [
+            "fang", "claw", "horn", "scale", "hide", "pelt", "shell", "carapace",
+            "wing", "feather", "fur", "blood", "talon", "stinger", "tooth"
+        ];
+        if (monsterMaterialTerms.Any(term => lower.Contains(term, StringComparison.Ordinal)))
+            return "Monster Materials";
+
+        if (uiCategory.Contains("ingredient", StringComparison.OrdinalIgnoreCase) ||
+            uiCategory.Contains("material", StringComparison.OrdinalIgnoreCase) ||
+            uiCategory.Contains("stone", StringComparison.OrdinalIgnoreCase) ||
+            uiCategory.Contains("metal", StringComparison.OrdinalIgnoreCase) ||
+            uiCategory.Contains("cloth", StringComparison.OrdinalIgnoreCase) ||
+            uiCategory.Contains("reagent", StringComparison.OrdinalIgnoreCase) ||
+            uiCategory.Contains("alchem", StringComparison.OrdinalIgnoreCase) ||
+            uiCategory.Contains("wood", StringComparison.OrdinalIgnoreCase) ||
+            uiCategory.Contains("leather", StringComparison.OrdinalIgnoreCase))
+            return "Crafting Materials";
+
+        return "Miscellaneous";
     }
 
     public unsafe bool IsStillSameItem(InventoryCandidate candidate)
