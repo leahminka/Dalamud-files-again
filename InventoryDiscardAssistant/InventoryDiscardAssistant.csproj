@@ -7,6 +7,5 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>InventoryDiscardAssistant</AssemblyName>
     <RootNamespace>InventoryDiscardAssistant</RootNamespace>
-    <OutputPath>../dist/</OutputPath>
   </PropertyGroup>
 </Project>
