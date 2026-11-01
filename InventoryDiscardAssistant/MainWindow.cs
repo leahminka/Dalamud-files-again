@@ -153,7 +153,7 @@ public sealed class MainWindow : Window, IDisposable
                 .Take(250).ToList();
 
             ImGui.TextDisabled($"Showing up to 250 matches. Check Include to select an item; Protect always overrides selection.");
-            using var child = ImGui.BeginChild("catalog-items", new Vector2(0, 180), true);
+            var child = ImGui.BeginChild("catalog-items", new Vector2(0, 180), true);
             if (child)
             {
                 foreach (var item in matches)
