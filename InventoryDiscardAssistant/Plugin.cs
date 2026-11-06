@@ -28,6 +28,15 @@ public sealed class Plugin : IDalamudPlugin
         configuration.AutoSelectedItemIds ??= [];
         configuration.ManuallyDeselectedItemIds ??= [];
         configuration.ExcludedItemIds ??= [];
+        if (!configuration.RememberManualDeselections)
+        {
+            foreach (var itemId in configuration.ManuallyDeselectedItemIds)
+            {
+                configuration.AutoSelectedItemIds.Remove(itemId);
+                configuration.SelectedItemIds.Remove(itemId);
+            }
+            configuration.ManuallyDeselectedItemIds.Clear();
+        }
         configuration.SelectedCategoryIds ??= [];
 
         window = new MainWindow(configuration, Inventory, DataManager, TextureProvider, Log)
