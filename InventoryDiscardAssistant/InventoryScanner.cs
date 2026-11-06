@@ -71,7 +71,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
                 if (!itemSheet.TryGetRow(slot.BaseItemId, out var row)) continue;
                 if (!includeCollectibles && slot.IsCollectable) continue;
                 var uiCategory = row.ItemUICategory.Value.Name.ToString();
-                var category = ClassifyItem(row.Name.ToString(), row.ItemUICategory.RowId, uiCategory);
+                var category = IsArmoryContainer(container) ? GetArmoryCategory(container) : ClassifyItem(row.Name.ToString(), row.ItemUICategory.RowId, uiCategory);
                 result.Add(new InventoryCandidate(slot.ItemId, slot.BaseItemId, row.ItemUICategory.RowId, row.Icon,
                     row.Name.ToString(), category, slot.Quantity, container, slot.InventorySlot, slot.IsHq));
             }
@@ -79,6 +79,29 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
         return result;
     }
 
+    public static bool IsArmoryContainer(GameInventoryType container) => ArmoryContainers.Contains(container);
+
+    public static string GetArmoryCategory(GameInventoryType container) => container switch
+    {
+        GameInventoryType.ArmoryMainHand => "Main Hand",
+        GameInventoryType.ArmoryOffHand => "Off Hand",
+        GameInventoryType.ArmoryHead => "Head",
+        GameInventoryType.ArmoryBody => "Body",
+        GameInventoryType.ArmoryHands => "Hands",
+        GameInventoryType.ArmoryLegs => "Legs",
+        GameInventoryType.ArmoryFeets => "Feet",
+        GameInventoryType.ArmoryEar => "Ears",
+        GameInventoryType.ArmoryNeck => "Neck",
+        GameInventoryType.ArmoryWrist => "Wrists",
+        GameInventoryType.ArmoryRings => "Rings",
+        GameInventoryType.ArmorySoulCrystal => "Soul Crystals",
+        _ => "Miscellaneous",
+    };
+
+    public IReadOnlySet<uint> GetCurrentlyEquippedBaseItemIds() =>
+        inventory.GetInventoryItems(GameInventoryType.EquippedItems)
+            .Where(item => !item.IsEmpty && item.BaseItemId != 0 && item.Quantity > 0)
+            .Select(item => item.BaseItemId).ToHashSet();
     private static string ClassifyItem(string name, uint uiCategoryId, string uiCategory)
     {
         var category = uiCategory.Trim();
