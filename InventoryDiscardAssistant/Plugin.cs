@@ -25,6 +25,8 @@ public sealed class Plugin : IDalamudPlugin
     {
         configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         configuration.SelectedItemIds ??= [];
+        configuration.AutoSelectedItemIds ??= [];
+        configuration.ManuallyDeselectedItemIds ??= [];
         configuration.ExcludedItemIds ??= [];
         configuration.SelectedCategoryIds ??= [];
 
