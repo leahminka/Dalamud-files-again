@@ -28,6 +28,17 @@ public sealed class Plugin : IDalamudPlugin
         configuration.AutoSelectedItemIds ??= [];
         configuration.ManuallyDeselectedItemIds ??= [];
         configuration.ExcludedItemIds ??= [];
+
+        // Older versions could leave bulk-selected IDs saved as automatic selections.
+        // Clear that stale bulk-selection state once during migration, while preserving
+        // items the user individually selected through the normal item checkboxes.
+        if (!configuration.HasCompletedInitialSelectionMigration)
+        {
+            configuration.AutoSelectedItemIds.Clear();
+            configuration.HasCompletedInitialSelectionMigration = true;
+            configuration.Save();
+        }
+
         if (!configuration.RememberManualDeselections)
         {
             foreach (var itemId in configuration.ManuallyDeselectedItemIds)
