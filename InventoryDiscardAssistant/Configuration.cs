@@ -12,6 +12,8 @@ public sealed class Configuration : IPluginConfiguration
     public bool IncludeCollectibles { get; set; } = true;
     public bool RememberManualDeselections { get; set; }
     public bool HasCompletedInitialSelectionMigration { get; set; }
+    public bool ExcludeGearsetItems { get; set; } = true;
+    public bool ExcludeCurrentlyEquipped { get; set; } = true
     public bool ScanInventory { get; set; } = true;
     public bool ScanArmory { get; set; }
     public bool ScanSaddlebag { get; set; }
