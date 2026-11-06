@@ -7,10 +7,11 @@ namespace InventoryDiscardAssistant;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 4;
+    public int Version { get; set; } = 5;
     public bool DisableHoldCtrlToDiscard { get; set; }
     public bool IncludeCollectibles { get; set; } = true;
     public bool RememberManualDeselections { get; set; }
+    public bool HasCompletedInitialSelectionMigration { get; set; }
     public bool ScanInventory { get; set; } = true;
     public bool ScanArmory { get; set; }
     public bool ScanSaddlebag { get; set; }
