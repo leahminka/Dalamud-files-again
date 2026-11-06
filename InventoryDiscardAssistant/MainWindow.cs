@@ -61,6 +61,22 @@ public sealed class MainWindow : Window, IDisposable
             config.Save();
         }
         ImGui.SameLine();
+        var rememberDeselections = config.RememberManualDeselections;
+        if (ImGui.Checkbox("Remember manual deselections", ref rememberDeselections))
+        {
+            config.RememberManualDeselections = rememberDeselections;
+            if (!rememberDeselections)
+            {
+                foreach (var itemId in config.ManuallyDeselectedItemIds)
+                {
+                    config.AutoSelectedItemIds.Remove(itemId);
+                    config.SelectedItemIds.Remove(itemId);
+                }
+                config.ManuallyDeselectedItemIds.Clear();
+            }
+            config.Save();
+        }
+        ImGui.SameLine();
         var includeCollectibles = config.IncludeCollectibles;
         if (ImGui.Checkbox("Include Collectibles", ref includeCollectibles))
         {
@@ -232,7 +248,10 @@ public sealed class MainWindow : Window, IDisposable
                         config.ExcludedItemIds.Add(item.ItemId);
                         config.SelectedItemIds.Remove(item.ItemId);
                         config.AutoSelectedItemIds.Remove(item.ItemId);
-                        config.ManuallyDeselectedItemIds.Add(item.ItemId);
+                        if (config.RememberManualDeselections)
+                            config.ManuallyDeselectedItemIds.Add(item.ItemId);
+                        else
+                            config.ManuallyDeselectedItemIds.Remove(item.ItemId);
                     }
                     config.Save();
                 }
@@ -352,7 +371,15 @@ public sealed class MainWindow : Window, IDisposable
         else
         {
             config.SelectedItemIds.Remove(itemId);
-            config.ManuallyDeselectedItemIds.Add(itemId);
+            if (config.RememberManualDeselections)
+            {
+                config.ManuallyDeselectedItemIds.Add(itemId);
+            }
+            else
+            {
+                config.AutoSelectedItemIds.Remove(itemId);
+                config.ManuallyDeselectedItemIds.Remove(itemId);
+            }
         }
 
         config.Save();
@@ -361,10 +388,14 @@ public sealed class MainWindow : Window, IDisposable
     private void ReplaceAutomaticSelection(IEnumerable<uint> itemIds)
     {
         config.AutoSelectedItemIds.Clear();
+        if (!config.RememberManualDeselections)
+            config.ManuallyDeselectedItemIds.Clear();
+
         foreach (var itemId in itemIds.Distinct())
         {
             if (!config.ExcludedItemIds.Contains(itemId) &&
-                !config.ManuallyDeselectedItemIds.Contains(itemId))
+                (!config.RememberManualDeselections ||
+                 !config.ManuallyDeselectedItemIds.Contains(itemId)))
                 config.AutoSelectedItemIds.Add(itemId);
         }
 
