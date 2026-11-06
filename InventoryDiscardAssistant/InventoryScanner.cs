@@ -99,7 +99,7 @@ public sealed class InventoryScanner(IGameInventory inventory, IDataManager data
     };
 
     public IReadOnlySet<uint> GetCurrentlyEquippedBaseItemIds() =>
-        inventory.GetInventoryItems(GameInventoryType.EquippedItems)
+        inventory.GetInventoryItems(GameInventoryType.EquippedItems).ToArray()
             .Where(item => !item.IsEmpty && item.BaseItemId != 0 && item.Quantity > 0)
             .Select(item => item.BaseItemId).ToHashSet();
     private static string ClassifyItem(string name, uint uiCategoryId, string uiCategory)
