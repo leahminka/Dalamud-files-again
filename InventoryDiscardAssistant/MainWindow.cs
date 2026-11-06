@@ -140,6 +140,8 @@ public sealed class MainWindow : Window, IDisposable
         if (ImGui.Checkbox("Personal Inventory", ref personal))
         {
             config.ScanInventory = personal;
+            if (personal && config.ScanArmory)
+                config.ScanArmory = false;
             config.Save();
         }
         ImGui.SameLine();
@@ -147,6 +149,13 @@ public sealed class MainWindow : Window, IDisposable
         if (ImGui.Checkbox("Armoury Chest", ref armory))
         {
             config.ScanArmory = armory;
+            if (armory)
+            {
+                // Armoury Chest is exclusive: its scan results must not be mixed
+                // with Personal Inventory or Chocobo Saddlebag selections.
+                config.ScanInventory = false;
+                config.ScanSaddlebag = false;
+            }
             config.Save();
         }
         if (config.ScanArmory)
@@ -173,14 +182,11 @@ public sealed class MainWindow : Window, IDisposable
         if (ImGui.Checkbox("Chocobo Saddlebag", ref saddlebag))
         {
             config.ScanSaddlebag = saddlebag;
+            if (saddlebag && config.ScanArmory)
+                config.ScanArmory = false;
             config.Save();
         }
-        ImGui.SameLine();
-        ImGui.BeginDisabled();
-        var dresser = false;
-        ImGui.Checkbox("Glamour Dresser (not supported)", ref dresser);
-        ImGui.EndDisabled();
-        ImGui.TextDisabled("Saddlebag includes Premium Saddlebag when available. Glamour Dresser contents are not exposed as a safe discardable inventory by this API.");
+        ImGui.TextDisabled("Saddlebag includes Premium Saddlebag when available.");
     }
 
     private void ScanCandidates()

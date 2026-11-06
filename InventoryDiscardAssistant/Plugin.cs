@@ -39,6 +39,17 @@ public sealed class Plugin : IDalamudPlugin
             configuration.Save();
         }
 
+        if (!configuration.HasCompletedContainerSelectionMigration)
+        {
+            // Start with Personal Inventory only, including existing installations that
+            // previously saved Armoury Chest or Saddlebag as selected.
+            configuration.ScanInventory = true;
+            configuration.ScanArmory = false;
+            configuration.ScanSaddlebag = false;
+            configuration.HasCompletedContainerSelectionMigration = true;
+            configuration.Save();
+        }
+
         if (!configuration.RememberManualDeselections)
         {
             foreach (var itemId in configuration.ManuallyDeselectedItemIds)
