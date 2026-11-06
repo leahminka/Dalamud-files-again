@@ -85,18 +85,10 @@ public sealed class MainWindow : Window, IDisposable
         ImGui.TextDisabled($"{scannedItems.Count} inventory stacks scanned");
         ImGui.SameLine();
         if (ImGui.Button("Clear Selection"))
-        {
-            config.SelectedItemIds.Clear();
-            config.Save();
-        }
+            ClearAllSelections();
         ImGui.SameLine();
         if (ImGui.Button("Select All Visible"))
-        {
-            foreach (var item in GetVisibleSummaries())
-                if (!config.ExcludedItemIds.Contains(item.ItemId))
-                    config.SelectedItemIds.Add(item.ItemId);
-            config.Save();
-        }
+            ReplaceAutomaticSelection(GetVisibleSummaries().Select(item => item.ItemId));
 
         ImGui.TextWrapped(status);
         ImGui.Separator();
@@ -211,14 +203,10 @@ public sealed class MainWindow : Window, IDisposable
             {
                 ImGui.PushID((int)item.ItemId);
                 var protectedItem = config.ExcludedItemIds.Contains(item.ItemId);
-                var included = config.SelectedItemIds.Contains(item.ItemId) && !protectedItem;
+                var included = IsItemSelected(item.ItemId);
 
                 if (ImGui.Checkbox("##include", ref included))
-                {
-                    if (included) config.SelectedItemIds.Add(item.ItemId);
-                    else config.SelectedItemIds.Remove(item.ItemId);
-                    config.Save();
-                }
+                    SetManualItemSelection(item.ItemId, included);
                 ImGui.SameLine();
 
                 var icon = textures.GetFromGameIcon(new GameIconLookup(item.IconId)).GetWrapOrDefault();
@@ -237,11 +225,14 @@ public sealed class MainWindow : Window, IDisposable
                 ImGui.SetCursorPosX(Math.Max(ImGui.GetCursorPosX(), ImGui.GetWindowContentRegionMax().X - 112));
                 if (ImGui.SmallButton(protectedItem ? "Protected" : "Protect"))
                 {
-                    if (protectedItem) config.ExcludedItemIds.Remove(item.ItemId);
+                    if (protectedItem)
+                        config.ExcludedItemIds.Remove(item.ItemId);
                     else
                     {
                         config.ExcludedItemIds.Add(item.ItemId);
                         config.SelectedItemIds.Remove(item.ItemId);
+                        config.AutoSelectedItemIds.Remove(item.ItemId);
+                        config.ManuallyDeselectedItemIds.Add(item.ItemId);
                     }
                     config.Save();
                 }
@@ -260,19 +251,10 @@ public sealed class MainWindow : Window, IDisposable
         ImGui.Separator();
 
         if (ImGui.Button("Select All"))
-        {
-            foreach (var item in GetVisibleSummaries())
-                if (!config.ExcludedItemIds.Contains(item.ItemId))
-                    config.SelectedItemIds.Add(item.ItemId);
-            config.Save();
-        }
+            ReplaceAutomaticSelection(GetVisibleSummaries().Select(item => item.ItemId));
         ImGui.SameLine();
         if (ImGui.Button("Deselect All"))
-        {
-            config.SelectedItemIds.Clear();
-            excludedStacks.Clear();
-            config.Save();
-        }
+            ClearAllSelections();
 
         var listHeight = Math.Max(100, ImGui.GetContentRegionAvail().Y - 120);
         if (ImGui.BeginChild("selected-items-list", new Vector2(0, listHeight), false))
@@ -349,17 +331,57 @@ public sealed class MainWindow : Window, IDisposable
         ImGui.SameLine();
         ImGui.BeginDisabled(string.IsNullOrEmpty(selectedCategory));
         if (ImGui.Button("Select All in Category"))
-        {
-            foreach (var item in GetVisibleSummaries().Where(x => x.Category == selectedCategory))
-                if (!config.ExcludedItemIds.Contains(item.ItemId))
-                    config.SelectedItemIds.Add(item.ItemId);
-            config.Save();
-        }
+            ReplaceAutomaticSelection(GetVisibleSummaries()
+                .Where(item => item.Category == selectedCategory)
+                .Select(item => item.ItemId));
         ImGui.EndDisabled();
     }
+    private bool IsItemSelected(uint itemId) =>
+        !config.ExcludedItemIds.Contains(itemId) &&
+        (config.SelectedItemIds.Contains(itemId) ||
+         (config.AutoSelectedItemIds.Contains(itemId) &&
+          !config.ManuallyDeselectedItemIds.Contains(itemId)));
+
+    private void SetManualItemSelection(uint itemId, bool selected)
+    {
+        if (selected)
+        {
+            config.SelectedItemIds.Add(itemId);
+            config.ManuallyDeselectedItemIds.Remove(itemId);
+        }
+        else
+        {
+            config.SelectedItemIds.Remove(itemId);
+            config.ManuallyDeselectedItemIds.Add(itemId);
+        }
+
+        config.Save();
+    }
+
+    private void ReplaceAutomaticSelection(IEnumerable<uint> itemIds)
+    {
+        config.AutoSelectedItemIds.Clear();
+        foreach (var itemId in itemIds.Distinct())
+        {
+            if (!config.ExcludedItemIds.Contains(itemId) &&
+                !config.ManuallyDeselectedItemIds.Contains(itemId))
+                config.AutoSelectedItemIds.Add(itemId);
+        }
+
+        config.Save();
+    }
+
+    private void ClearAllSelections()
+    {
+        config.SelectedItemIds.Clear();
+        config.AutoSelectedItemIds.Clear();
+        config.ManuallyDeselectedItemIds.Clear();
+        excludedStacks.Clear();
+        config.Save();
+    }
+
     private List<InventoryCandidate> GetSelectedCandidates() =>
-        scannedItems.Where(x => config.SelectedItemIds.Contains(x.BaseItemId) &&
-            !config.ExcludedItemIds.Contains(x.BaseItemId) &&
+        scannedItems.Where(x => IsItemSelected(x.BaseItemId) &&
             !config.ExcludedItemIds.Contains(x.ItemId)).ToList();
 
     private unsafe HashSet<uint> GetGearsetItemIds()
