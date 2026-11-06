@@ -149,6 +149,25 @@ public sealed class MainWindow : Window, IDisposable
             config.ScanArmory = armory;
             config.Save();
         }
+        if (config.ScanArmory)
+        {
+            ImGui.SameLine();
+            var excludeGearsets = config.ExcludeGearsetItems;
+            if (ImGui.Checkbox("Exclude Gearset Items", ref excludeGearsets))
+            {
+                config.ExcludeGearsetItems = excludeGearsets;
+                config.Save();
+                if (hasScanned) ScanCandidates();
+            }
+            ImGui.SameLine();
+            var excludeEquipped = config.ExcludeCurrentlyEquipped;
+            if (ImGui.Checkbox("Exclude Currently Equipped", ref excludeEquipped))
+            {
+                config.ExcludeCurrentlyEquipped = excludeEquipped;
+                config.Save();
+                if (hasScanned) ScanCandidates();
+            }
+        }
         ImGui.SameLine();
         var saddlebag = config.ScanSaddlebag;
         if (ImGui.Checkbox("Chocobo Saddlebag", ref saddlebag))
@@ -169,6 +188,18 @@ public sealed class MainWindow : Window, IDisposable
         try
         {
             scannedItems = scanner.Scan(config.ScanInventory, config.ScanArmory, config.ScanSaddlebag, config.IncludeCollectibles).ToList();
+            if (config.ScanArmory && config.ExcludeGearsetItems)
+            {
+                var gearsetIds = GetGearsetItemIds();
+                scannedItems = scannedItems.Where(item => !InventoryScanner.IsArmoryContainer(item.Container) ||
+                    (!gearsetIds.Contains(item.BaseItemId) && !gearsetIds.Contains(item.ItemId))).ToList();
+            }
+            if (config.ScanArmory && config.ExcludeCurrentlyEquipped)
+            {
+                var equippedIds = scanner.GetCurrentlyEquippedBaseItemIds();
+                scannedItems = scannedItems.Where(item => !InventoryScanner.IsArmoryContainer(item.Container) ||
+                    !equippedIds.Contains(item.BaseItemId)).ToList();
+            }
             hasScanned = true;
             status = scannedItems.Count == 0
                 ? "Scan complete: no items were found in the selected inventory locations."
@@ -325,12 +356,14 @@ public sealed class MainWindow : Window, IDisposable
     }
     private void DrawCategorySelector()
     {
-        // Keep every supported category available even if the current scan has no matches.
-        var categories = new[]
-        {
-            "Fish", "Monster Materials", "Crafting Materials", "Dyes", "Miscellaneous"
-        }.Concat(GetVisibleSummaries().Select(x => x.Category))
-         .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
+        // Armoury mode uses equipment-slot categories; inventory-only mode keeps its original categories.
+        var categories = config.ScanArmory
+            ? new[] { "Main Hand", "Off Hand", "Head", "Body", "Hands", "Legs", "Feet", "Ears", "Neck", "Wrists", "Rings", "Soul Crystals" }
+            : new[] { "Fish", "Monster Materials", "Crafting Materials", "Dyes", "Miscellaneous" }
+                .Concat(GetVisibleSummaries().Select(x => x.Category))
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
+        if (!categories.Contains(selectedCategory, StringComparer.OrdinalIgnoreCase))
+            selectedCategory = string.Empty;
 
         ImGui.TextDisabled("Bulk select by category");
         ImGui.SetNextItemWidth(220);
@@ -351,7 +384,7 @@ public sealed class MainWindow : Window, IDisposable
         ImGui.BeginDisabled(string.IsNullOrEmpty(selectedCategory));
         if (ImGui.Button("Select All in Category"))
             ReplaceAutomaticSelection(GetVisibleSummaries()
-                .Where(item => item.Category == selectedCategory)
+                .Where(item => item.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase))
                 .Select(item => item.ItemId));
         ImGui.EndDisabled();
     }
