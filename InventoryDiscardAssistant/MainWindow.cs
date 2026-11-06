@@ -500,7 +500,7 @@ public sealed class MainWindow : Window, IDisposable
 
         var candidate = executionQueue[executionIndex];
         var protectedIds = config.ExcludedItemIds;
-        var gearsetIds = GetGearsetItemIds();
+        var gearsetIds = config.ExcludeGearsetItems ? GetGearsetItemIds() : [];
         if (protectedIds.Contains(candidate.BaseItemId) || protectedIds.Contains(candidate.ItemId) ||
             gearsetIds.Contains(candidate.BaseItemId) || gearsetIds.Contains(candidate.ItemId))
         {
